@@ -5,6 +5,12 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cart, setCart] = useState<{[key: string]: number}>({});
   const [showImages, setShowImages] = useState(false);
+  const [selectedDrink, setSelectedDrink] = useState<string | null>(null);
+  const [customizations, setCustomizations] = useState({
+    toppings: [] as string[],
+    milk: 'regular',
+    sweetness: 'regular'
+  });
 
   const drinks = [
     { name: 'Classic Milk Tea', price: 4.50, category: 'milk-tea', popular: true },
@@ -246,7 +252,7 @@ export default function App() {
     return (
       <svg viewBox="0 0 120 160" className="w-full h-full">
         <defs>
-          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
+          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1=\"0%\" x2=\"0%\" y2=\"100%">
             <stop offset="0%" stopColor={color} stopOpacity="0.8" />
             <stop offset="100%" stopColor={color} stopOpacity="1" />
           </linearGradient>
@@ -550,108 +556,6 @@ export default function App() {
           </div>
         </div>
       </section>
-
-      {/* Customization Modal */}
-      {selectedDrink && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Customize {selectedDrink}
-              </h2>
-              <button 
-                onClick={() => setSelectedDrink(null)}
-                className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
-              >
-                <X className="w-6 h-6 text-gray-600" />
-              </button>
-            </div>
-            
-            {/* Toppings Section */}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Choose Your Toppings</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {toppings.map((topping) => (
-                  <button
-                    key={topping.name}
-                    onClick={() => toggleTopping(topping.name)}
-                    className={`flex justify-between items-center p-4 rounded-2xl border-2 transition-all duration-300 ${
-                      customizations.toppings.includes(topping.name)
-                        ? 'bg-gradient-to-r from-purple-100 to-pink-100 border-purple-300 text-purple-700'
-                        : 'bg-gray-50 border-gray-200 hover:border-purple-200 hover:bg-purple-50'
-                    }`}
-                  >
-                    <span className="font-medium">{topping.name}</span>
-                    <span className="font-bold text-purple-600">+${topping.price.toFixed(2)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Milk Options Section */}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Choose Your Milk</h3>
-              <div className="grid grid-cols-1 gap-3">
-                {milkOptions.map((milk) => (
-                  <button
-                    key={milk.name}
-                    onClick={() => setCustomizations(prev => ({ ...prev, milk: milk.name.toLowerCase().split(' ')[0] }))}
-                    className={`flex justify-between items-center p-4 rounded-2xl border-2 transition-all duration-300 ${
-                      customizations.milk === milk.name.toLowerCase().split(' ')[0]
-                        ? 'bg-gradient-to-r from-purple-100 to-pink-100 border-purple-300 text-purple-700'
-                        : 'bg-gray-50 border-gray-200 hover:border-purple-200 hover:bg-purple-50'
-                    }`}
-                  >
-                    <span className="font-medium">{milk.name}</span>
-                    <span className="font-bold text-purple-600">
-                      {milk.price > 0 ? `+$${milk.price.toFixed(2)}` : 'Free'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Sweetness Level Section */}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Choose Sweetness Level</h3>
-              <div className="grid grid-cols-1 gap-3">
-                {sweetnessLevels.map((sweetness) => (
-                  <button
-                    key={sweetness.name}
-                    onClick={() => setCustomizations(prev => ({ ...prev, sweetness: sweetness.name.split(' ')[0].replace('%', '').toLowerCase() }))}
-                    className={`flex justify-between items-center p-4 rounded-2xl border-2 transition-all duration-300 ${
-                      customizations.sweetness === sweetness.name.split(' ')[0].replace('%', '').toLowerCase()
-                        ? 'bg-gradient-to-r from-purple-100 to-pink-100 border-purple-300 text-purple-700'
-                        : 'bg-gray-50 border-gray-200 hover:border-purple-200 hover:bg-purple-50'
-                    }`}
-                  >
-                    <span className="font-medium">{sweetness.name}</span>
-                    <span className="font-bold text-purple-600">Free</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Add to Cart Button */}
-            <button 
-              onClick={addCustomizedDrinkToCart}
-              className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105"
-            >
-              Add to Cart - ${(() => {
-                const baseDrink = drinks.find(d => d.name === selectedDrink);
-                let total = baseDrink?.price || 0;
-                customizations.toppings.forEach(toppingName => {
-                  const topping = toppings.find(t => t.name === toppingName);
-                  if (topping) total += topping.price;
-                });
-                const selectedMilk = milkOptions.find(m => m.name.toLowerCase().includes(customizations.milk));
-                if (selectedMilk) total += selectedMilk.price;
-                return total.toFixed(2);
-              })()}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Cart Summary */}
       {getTotalItems() > 0 && (

@@ -1,71 +1,47 @@
 import React, { useState } from 'react';
-import { Menu, X, ShoppingCart, Sparkles, Plus, Eye, Star, Clock, Award, Users, Heart } from 'lucide-react';
+import { Menu, X, ShoppingCart, Sparkles, Plus, Eye, Star, Clock, Award, Users, Heart, Minus, Trash2 } from 'lucide-react';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { LoadingScreen, LoadingSpinner } from './components/LoadingSpinner';
+import { useMenu } from './hooks/useMenu';
+import { useCart } from './hooks/useCart';
+import type { Drink, Topping, MilkOption, SweetnessLevel } from './lib/supabase';
 
 export default function App() {
+  // Use custom hooks for data management
+  const { drinks, toppings, milkOptions, sweetnessLevels, loading, error, getDrinksByCategory } = useMenu();
+  const { cartItems, addToCart, removeFromCart, updateQuantity, getTotalItems, getTotalPrice, submitOrder, isSubmitting } = useCart();
+  
+  // UI state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [cart, setCart] = useState<{[key: string]: number}>({});
   const [showImages, setShowImages] = useState(false);
   const [selectedDrink, setSelectedDrink] = useState<string | null>(null);
+  const [selectedDrinkData, setSelectedDrinkData] = useState<Drink | null>(null);
   const [customizations, setCustomizations] = useState({
-    toppings: [] as string[],
-    milk: 'regular',
-    sweetness: 'regular'
+    toppings: [] as Topping[],
+    milkOption: null as MilkOption | null,
+    sweetnessLevel: null as SweetnessLevel | null
   });
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [filteredDrinks, setFilteredDrinks] = useState<Drink[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState({ name: '', email: '' });
+  const [showCheckout, setShowCheckout] = useState(false);
 
-  const drinks = [
-    { name: 'Classic Milk Tea', price: 4.50, category: 'milk-tea', popular: true },
-    { name: 'Taro Milk Tea', price: 5.00, category: 'milk-tea', popular: true },
-    { name: 'Thai Tea', price: 4.75, category: 'milk-tea' },
-    { name: 'Matcha Latte', price: 5.25, category: 'specialty', popular: true },
-    { name: 'Brown Sugar Milk Tea', price: 5.50, category: 'milk-tea' },
-    { name: 'Honeydew Smoothie', price: 4.25, category: 'smoothie' },
-    { name: 'Mango Green Tea', price: 4.00, category: 'fruit-tea' },
-    { name: 'Passion Fruit Tea', price: 4.00, category: 'fruit-tea' },
-    { name: 'Coconut Milk Tea', price: 4.75, category: 'milk-tea' },
-    { name: 'Jasmine Green Tea', price: 3.50, category: 'tea' },
-    { name: 'Oolong Tea', price: 3.75, category: 'tea' },
-    { name: 'Lychee Black Tea', price: 4.25, category: 'fruit-tea' },
-    { name: 'Rose Milk Tea', price: 5.00, category: 'specialty' },
-    { name: 'Wintermelon Tea', price: 3.75, category: 'tea' },
-    { name: 'Peach Oolong', price: 4.50, category: 'fruit-tea' },
-    { name: 'Lavender Honey Tea', price: 4.75, category: 'specialty' },
-    { name: 'Strawberry Milk Tea', price: 4.50, category: 'milk-tea' },
-    { name: 'Coffee Milk Tea', price: 5.25, category: 'specialty' },
-    { name: 'Earl Grey Milk Tea', price: 4.25, category: 'milk-tea' },
-    { name: 'Pineapple Green Tea', price: 4.00, category: 'fruit-tea' },
-    { name: 'Almond Milk Tea', price: 5.00, category: 'milk-tea' },
-    { name: 'Grapefruit Green Tea', price: 4.25, category: 'fruit-tea' },
-    { name: 'Vanilla Milk Tea', price: 4.75, category: 'milk-tea' },
-    { name: 'Lemon Honey Tea', price: 3.50, category: 'tea' }
-  ];
-
-  const toppings = [
-    { name: 'Tapioca Pearls', price: 0.50 },
-    { name: 'Popping Boba', price: 0.60 },
-    { name: 'Jelly', price: 0.50 },
-    { name: 'Pudding', price: 0.70 },
-    { name: 'Red Bean', price: 0.60 },
-    { name: 'Taro Balls', price: 0.65 },
-    { name: 'Grass Jelly', price: 0.55 },
-    { name: 'Aloe Vera', price: 0.60 }
-  ];
-
-  const milkOptions = [
-    { name: 'Regular Milk', price: 0 },
-    { name: 'Oat Milk', price: 0.50 },
-    { name: 'Almond Milk', price: 0.50 },
-    { name: 'Coconut Milk', price: 0.50 },
-    { name: 'Soy Milk', price: 0.40 },
-    { name: 'Non-Dairy Creamer', price: 0 }
-  ];
-
-  const sweetnessLevels = [
-    { name: '0% (No Sugar)', price: 0 },
-    { name: '25% (Less Sweet)', price: 0 },
-    { name: '50% (Half Sweet)', price: 0 },
-    { name: '75% (Regular)', price: 0 },
-    { name: '100% (Extra Sweet)', price: 0 }
-  ];
+  // Update filtered drinks when category or drinks change
+  React.useEffect(() => {
+    const updateFilteredDrinks = async () => {
+      if (selectedCategory === 'all') {
+        setFilteredDrinks(drinks);
+      } else {
+        const categoryDrinks = await getDrinksByCategory(selectedCategory);
+        setFilteredDrinks(categoryDrinks);
+      }
+    };
+    
+    if (drinks.length > 0) {
+      updateFilteredDrinks();
+    }
+  }, [selectedCategory, drinks, getDrinksByCategory]);
 
   const categories = [
     { id: 'all', name: 'All Drinks', icon: () => (
@@ -122,69 +98,96 @@ export default function App() {
     { id: 'smoothie', name: 'Smoothies', icon: Heart }
   ];
 
-  const [selectedCategory, setSelectedCategory] = useState('all');
-
-  const filteredDrinks = selectedCategory === 'all' 
-    ? drinks 
-    : drinks.filter(drink => drink.category === selectedCategory);
-
-  const addToCart = (drinkName: string) => {
-    setSelectedDrink(drinkName);
+  const handleAddToCart = (drink: Drink) => {
+    setSelectedDrink(drink.name);
+    setSelectedDrinkData(drink);
     setCustomizations({
       toppings: [],
-      milk: 'regular',
-      sweetness: 'regular'
+      milkOption: milkOptions.find(m => m.name === 'Regular Milk') || milkOptions[0] || null,
+      sweetnessLevel: sweetnessLevels.find(s => s.level === 75) || sweetnessLevels[0] || null
     });
   };
 
-  const addCustomizedDrinkToCart = () => {
-    if (!selectedDrink) return;
+  const handleAddCustomizedDrinkToCart = () => {
+    if (!selectedDrinkData || !customizations.milkOption || !customizations.sweetnessLevel) return;
     
-    const baseDrink = drinks.find(d => d.name === selectedDrink);
-    if (!baseDrink) return;
-    
-    let totalPrice = baseDrink.price;
-    
-    // Add topping prices
-    customizations.toppings.forEach(toppingName => {
-      const topping = toppings.find(t => t.name === toppingName);
-      if (topping) totalPrice += topping.price;
-    });
-    
-    // Add milk price
-    const selectedMilk = milkOptions.find(m => m.name.toLowerCase().includes(customizations.milk));
-    if (selectedMilk) totalPrice += selectedMilk.price;
-    
-    const cartKey = `${selectedDrink} (${customizations.toppings.join(', ') || 'No toppings'}, ${customizations.milk} milk, ${customizations.sweetness} sweet) - $${totalPrice.toFixed(2)}`;
-    
-    setCart(prev => ({
-      ...prev,
-      [cartKey]: (prev[cartKey] || 0) + 1
-    }));
+    addToCart(
+      selectedDrinkData,
+      customizations.toppings,
+      customizations.milkOption,
+      customizations.sweetnessLevel
+    );
     
     setSelectedDrink(null);
+    setSelectedDrinkData(null);
   };
 
-  const toggleTopping = (toppingName: string) => {
+  const toggleTopping = (topping: Topping) => {
     setCustomizations(prev => ({
       ...prev,
-      toppings: prev.toppings.includes(toppingName)
-        ? prev.toppings.filter(t => t !== toppingName)
-        : [...prev.toppings, toppingName]
+      toppings: prev.toppings.find(t => t.id === topping.id)
+        ? prev.toppings.filter(t => t.id !== topping.id)
+        : [...prev.toppings, topping]
     }));
   };
 
-  const getTotalItems = () => {
-    return Object.values(cart).reduce((sum, count) => sum + count, 0);
+  const setMilkOption = (milkOption: MilkOption) => {
+    setCustomizations(prev => ({
+      ...prev,
+      milkOption
+    }));
   };
 
-  const getTotalPrice = () => {
-    return Object.entries(cart).reduce((sum, [cartItem, count]) => {
-      const priceMatch = cartItem.match(/\$(\d+\.\d+)$/);
-      const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
-      return sum + (price * count);
-    }, 0);
+  const setSweetnessLevel = (sweetnessLevel: SweetnessLevel) => {
+    setCustomizations(prev => ({
+      ...prev,
+      sweetnessLevel
+    }));
   };
+
+  const calculateCustomizationPrice = () => {
+    if (!selectedDrinkData || !customizations.milkOption) return 0;
+    
+    let total = selectedDrinkData.price;
+    total += customizations.toppings.reduce((sum, topping) => sum + topping.price, 0);
+    total += customizations.milkOption.price;
+    
+    return total;
+  };
+
+  const handleCheckout = async () => {
+    try {
+      const order = await submitOrder(customerInfo.name || customerInfo.email ? customerInfo : undefined);
+      alert(`Order placed successfully! Order ID: ${order.id}`);
+      setShowCheckout(false);
+      setShowCart(false);
+      setCustomerInfo({ name: '', email: '' });
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Failed to place order. Please try again.');
+    }
+  };
+
+  // Show loading screen while data is loading
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  // Show error message if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 shadow-2xl border-2 border-red-200/50 max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <X className="w-10 h-10 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Connection Error</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-sm text-gray-500">Please make sure Supabase is properly configured.</p>
+        </div>
+      </div>
+    );
+  }
 
   const generateDrinkImage = (name: string) => {
     if (name === 'Taro Milk Tea') {
@@ -252,7 +255,7 @@ export default function App() {
     return (
       <svg viewBox="0 0 120 160" className="w-full h-full">
         <defs>
-          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
+          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor={color} stopOpacity="0.8" />
             <stop offset="100%" stopColor={color} stopOpacity="1" />
           </linearGradient>
@@ -279,7 +282,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-purple-100 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -351,7 +355,10 @@ export default function App() {
             </div>
 
             <div className="flex items-center space-x-4">
-              <button className="relative p-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <button 
+                onClick={() => setShowCart(true)}
+                className="relative p-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              >
                 <ShoppingCart className="w-5 h-5" />
                 {getTotalItems() > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-lg">
@@ -544,7 +551,7 @@ export default function App() {
                 </div>
                 
                 <button 
-                  onClick={() => addToCart(drink.name)}
+                  onClick={() => handleAddToCart(drink)}
                   className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-110 flex items-center justify-center space-x-2 relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-purple-600/30 to-pink-600/30 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
@@ -557,37 +564,271 @@ export default function App() {
         </div>
       </section>
 
-      {/* Cart Summary */}
-      {getTotalItems() > 0 && (
-        <div className="fixed bottom-6 right-6 bg-gradient-to-br from-white/95 via-purple-50/90 to-pink-50/90 backdrop-blur-md rounded-3xl p-8 shadow-3xl border-2 border-purple-200/50 z-40 min-w-[350px] hover:scale-105 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-100/20 via-pink-100/20 to-orange-100/20 rounded-3xl"></div>
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
-            <ShoppingCart className="w-6 h-6 bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text" />
-            <span>Your Order</span>
-          </h3>
-          
-          <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
-            {Object.entries(cart).map(([name, count]) => (
-              <div key={name} className="flex justify-between items-center text-sm">
-                <span className="text-gray-700 flex-1 pr-2">{name} x{count}</span>
-                <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  ${(parseFloat(name.match(/\$(\d+\.\d+)$/)?.[1] || '0') * count).toFixed(2)}
-                </span>
-              </div>
-            ))}
-          </div>
-          
-          <div className="border-t border-purple-100 pt-4">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-lg font-bold text-gray-800">Total:</span>
-              <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
-                ${getTotalPrice().toFixed(2)}
-              </span>
+      {/* Customization Modal */}
+      {selectedDrink && selectedDrinkData && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Customize {selectedDrink}
+              </h2>
+              <button 
+                onClick={() => setSelectedDrink(null)}
+                className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
             </div>
             
-            <button className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-110 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-purple-600/30 to-pink-600/30 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-              Checkout ({getTotalItems()} items)
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Toppings */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Toppings</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {toppings.map((topping) => (
+                    <button
+                      key={topping.id}
+                      onClick={() => toggleTopping(topping)}
+                      className={`p-3 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        customizations.toppings.find(t => t.id === topping.id)
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-600'
+                          : 'bg-white border-gray-200 hover:border-purple-300 text-gray-700'
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{topping.name}</div>
+                      <div className="text-xs opacity-80">+${topping.price.toFixed(2)}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Milk Options */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Milk Options</h3>
+                <div className="space-y-2">
+                  {milkOptions.map((milk) => (
+                    <button
+                      key={milk.id}
+                      onClick={() => setMilkOption(milk)}
+                      className={`w-full p-3 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        customizations.milkOption?.id === milk.id
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-600'
+                          : 'bg-white border-gray-200 hover:border-purple-300 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">{milk.name}</span>
+                        {milk.price > 0 && (
+                          <span className="text-sm opacity-80">+${milk.price.toFixed(2)}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Sweetness Levels */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Sweetness Level</h3>
+                <div className="space-y-2">
+                  {sweetnessLevels.map((sweetness) => (
+                    <button
+                      key={sweetness.id}
+                      onClick={() => setSweetnessLevel(sweetness)}
+                      className={`w-full p-3 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        customizations.sweetnessLevel?.id === sweetness.id
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-600'
+                          : 'bg-white border-gray-200 hover:border-purple-300 text-gray-700'
+                      }`}
+                    >
+                      <span className="font-semibold">{sweetness.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-xl font-bold text-gray-800">Total:</span>
+                <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  ${calculateCustomizationPrice().toFixed(2)}
+                </span>
+              </div>
+              
+              <button
+                onClick={handleAddCustomizedDrinkToCart}
+                disabled={!customizations.milkOption || !customizations.sweetnessLevel}
+                className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cart Modal */}
+      {showCart && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center space-x-2">
+                <ShoppingCart className="w-8 h-8" />
+                <span>Your Cart</span>
+              </h2>
+              <button 
+                onClick={() => setShowCart(false)}
+                className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            {cartItems.length === 0 ? (
+              <div className="text-center py-12">
+                <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">Your cart is empty</p>
+                <p className="text-gray-400">Add some delicious drinks to get started!</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4 mb-8">
+                  {cartItems.map((item, index) => (
+                    <div key={index} className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="font-bold text-gray-800 text-lg">{item.drink.name}</h3>
+                        <button
+                          onClick={() => removeFromCart(index)}
+                          className="p-1 hover:bg-red-100 rounded-lg transition-colors text-red-500"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      
+                      <div className="text-sm text-gray-600 mb-3">
+                        <p>Milk: {item.milkOption.name}</p>
+                        <p>Sweetness: {item.sweetnessLevel.name}</p>
+                        {item.toppings.length > 0 && (
+                          <p>Toppings: {item.toppings.map(t => t.name).join(', ')}</p>
+                        )}
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => updateQuantity(index, item.quantity - 1)}
+                            className="p-1 hover:bg-purple-100 rounded-lg transition-colors"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="font-semibold text-lg">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(index, item.quantity + 1)}
+                            className="p-1 hover:bg-purple-100 rounded-lg transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                        
+                        <div className="text-right">
+                          <div className="text-sm text-gray-500">${item.totalPrice.toFixed(2)} each</div>
+                          <div className="font-bold text-lg bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                            ${(item.totalPrice * item.quantity).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <span className="text-2xl font-bold text-gray-800">Total:</span>
+                    <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
+                      ${getTotalPrice().toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  <button
+                    onClick={() => setShowCheckout(true)}
+                    className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105"
+                  >
+                    Proceed to Checkout ({getTotalItems()} items)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Checkout Modal */}
+      {showCheckout && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Checkout
+              </h2>
+              <button 
+                onClick={() => setShowCheckout(false)}
+                className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={customerInfo.name}
+                  onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Your name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={customerInfo.email}
+                  onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="your@email.com"
+                />
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 mb-6">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-800">Total Amount:</span>
+                <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  ${getTotalPrice().toFixed(2)}
+                </span>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleCheckout}
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <LoadingSpinner size="sm" className="text-white" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <span>Place Order</span>
+              )}
             </button>
           </div>
         </div>
@@ -623,6 +864,7 @@ export default function App() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

@@ -54,16 +54,35 @@ export default function App() {
         <circle cx="15" cy="25" r="1" fill="currentColor"/>
       </svg>
     ) },
-    { id: 'fruit-tea', name: 'Fruit Tea', icon: Heart },
+    { id: 'fruit-tea', name: 'Fruit Tea', icon: () => (
+      <svg viewBox="0 0 24 32" className="w-5 h-5">
+        {/* Cup outline */}
+        <path d="M5 8 L19 8 L18 28 L6 28 Z" fill="currentColor" opacity="0.3"/>
+        <path d="M6 9 L18 9 L17 27 L7 27 Z" fill="currentColor" opacity="0.5"/>
+        <ellipse cx="12" cy="9" rx="6" ry="2" fill="currentColor"/>
+        {/* Fruit slices */}
+        <circle cx="8" cy="15" r="2" fill="currentColor" opacity="0.8"/>
+        <circle cx="16" cy="18" r="1.5" fill="currentColor" opacity="0.8"/>
+        <circle cx="10" cy="22" r="1.5" fill="currentColor" opacity="0.8"/>
+        <circle cx="14" cy="20" r="1" fill="currentColor" opacity="0.8"/>
+        {/* Fruit garnish on top */}
+        <path d="M10 7 Q12 5 14 7" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.9"/>
+        <circle cx="12" cy="6" r="1" fill="currentColor" opacity="0.9"/>
+      </svg>
+    ) },
     { id: 'specialty', name: 'Specialty', icon: Sparkles },
     { id: 'tea', name: 'Pure Tea', icon: () => (
       <svg viewBox="0 0 24 32" className="w-5 h-5">
-        <path d="M5 8 L19 8 L18 28 L6 28 Z" fill="currentColor" opacity="0.3"/>
-        <path d="M6 9 L18 9 L17 27 L7 27 Z" fill="currentColor" opacity="0.7"/>
-        <ellipse cx="12" cy="9" rx="6" ry="2" fill="currentColor"/>
-        <circle cx="9" cy="25" r="1" fill="currentColor"/>
-        <circle cx="12" cy="26" r="1" fill="currentColor"/>
-        <circle cx="15" cy="25" r="1" fill="currentColor"/>
+        {/* Traditional teacup shape */}
+        <path d="M6 12 L18 12 L17 26 L7 26 Z" fill="currentColor" opacity="0.4"/>
+        <path d="M7 13 L17 13 L16 25 L8 25 Z" fill="currentColor" opacity="0.6"/>
+        <ellipse cx="12" cy="13" rx="5" ry="1.5" fill="currentColor"/>
+        {/* Tea handle */}
+        <path d="M18 16 Q22 16 22 20 Q22 24 18 24" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.8"/>
+        {/* Steam lines */}
+        <path d="M9 10 Q9 8 10 8 Q10 6 9 6" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.7"/>
+        <path d="M12 10 Q12 8 13 8 Q13 6 12 6" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.7"/>
+        <path d="M15 10 Q15 8 16 8 Q16 6 15 6" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.7"/>
       </svg>
     ) },
     { id: 'smoothie', name: 'Smoothies', icon: Heart }

@@ -173,9 +173,10 @@ export default function App() {
   };
 
   const getTotalPrice = () => {
-    return Object.entries(cart).reduce((sum, [name, count]) => {
-      const drink = drinks.find(d => d.name === name);
-      return sum + (drink ? drink.price * count : 0);
+    return Object.entries(cart).reduce((sum, [cartItem, count]) => {
+      const priceMatch = cartItem.match(/\$(\d+\.\d+)$/);
+      const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
+      return sum + (price * count);
     }, 0);
   };
 
@@ -562,9 +563,9 @@ export default function App() {
           <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
             {Object.entries(cart).map(([name, count]) => (
               <div key={name} className="flex justify-between items-center text-sm">
-                <span className="text-gray-700">{name} x{count}</span>
+                <span className="text-gray-700 flex-1 pr-2">{name} x{count}</span>
                 <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  ${((drinks.find(d => d.name === name)?.price || 0) * count).toFixed(2)}
+                  ${(parseFloat(name.match(/\$(\d+\.\d+)$/)?.[1] || '0') * count).toFixed(2)}
                 </span>
               </div>
             ))}

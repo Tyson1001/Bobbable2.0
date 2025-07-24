@@ -5,6 +5,12 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cart, setCart] = useState<{[key: string]: number}>({});
   const [showImages, setShowImages] = useState(false);
+  const [selectedDrink, setSelectedDrink] = useState<string | null>(null);
+  const [customizations, setCustomizations] = useState({
+    toppings: [] as string[],
+    milk: 'regular',
+    sweetness: 'regular'
+  });
 
   const drinks = [
     { name: 'Classic Milk Tea', price: 4.50, category: 'milk-tea', popular: true },

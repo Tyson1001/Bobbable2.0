@@ -1,12 +1,14 @@
 import { supabase } from '../lib/supabase';
 import { isSupabaseConfigured } from '../lib/supabase';
 import type { Drink, Topping, MilkOption, SweetnessLevel } from '../lib/supabase';
+import { mockDrinks, mockToppings, mockMilkOptions, mockSweetnessLevels } from '../data/mockData';
 
 export class MenuService {
   static async getDrinks(): Promise<Drink[]> {
     try {
       if (!isSupabaseConfigured() || !supabase) {
-        throw new Error('Supabase is not configured. Please connect to Supabase.');
+        console.warn('Supabase is not configured. Using mock data.');
+        return mockDrinks;
       }
 
       const { data, error } = await supabase
@@ -29,7 +31,11 @@ export class MenuService {
   static async getDrinksByCategory(category: string): Promise<Drink[]> {
     try {
       if (!isSupabaseConfigured() || !supabase) {
-        throw new Error('Supabase is not configured. Please connect to Supabase.');
+        console.warn('Supabase is not configured. Using mock data.');
+        if (category === 'all') {
+          return mockDrinks;
+        }
+        return mockDrinks.filter(drink => drink.category === category);
       }
 
       if (category === 'all') {
@@ -57,7 +63,8 @@ export class MenuService {
   static async getToppings(): Promise<Topping[]> {
     try {
       if (!isSupabaseConfigured() || !supabase) {
-        throw new Error('Supabase is not configured. Please connect to Supabase.');
+        console.warn('Supabase is not configured. Using mock data.');
+        return mockToppings;
       }
 
       const { data, error } = await supabase
@@ -81,7 +88,8 @@ export class MenuService {
   static async getMilkOptions(): Promise<MilkOption[]> {
     try {
       if (!isSupabaseConfigured() || !supabase) {
-        throw new Error('Supabase is not configured. Please connect to Supabase.');
+        console.warn('Supabase is not configured. Using mock data.');
+        return mockMilkOptions;
       }
 
       const { data, error } = await supabase
@@ -105,7 +113,8 @@ export class MenuService {
   static async getSweetnessLevels(): Promise<SweetnessLevel[]> {
     try {
       if (!isSupabaseConfigured() || !supabase) {
-        throw new Error('Supabase is not configured. Please connect to Supabase.');
+        console.warn('Supabase is not configured. Using mock data.');
+        return mockSweetnessLevels;
       }
 
       const { data, error } = await supabase
@@ -128,7 +137,8 @@ export class MenuService {
   static async getPopularDrinks(): Promise<Drink[]> {
     try {
       if (!isSupabaseConfigured() || !supabase) {
-        throw new Error('Supabase is not configured. Please connect to Supabase.');
+        console.warn('Supabase is not configured. Using mock data.');
+        return mockDrinks.filter(drink => drink.popular);
       }
 
       const { data, error } = await supabase

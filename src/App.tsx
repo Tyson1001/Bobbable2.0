@@ -6,6 +6,8 @@ import { useMenu } from './hooks/useMenu';
 import { useCart } from './hooks/useCart';
 import type { Drink, Topping, MilkOption, SweetnessLevel } from './lib/supabase';
 
+import { isSupabaseConfigured } from './lib/supabase';
+
 export default function App() {
   // Use custom hooks for data management
   const { drinks, toppings, milkOptions, sweetnessLevels, loading, error, getDrinksByCategory } = useMenu();
@@ -178,16 +180,19 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 shadow-2xl border-2 border-red-200/50 max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <X className="w-10 h-10 text-white" />
+          <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Connection Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <p className="text-sm text-gray-500">Please make sure Supabase is properly configured.</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Demo Mode</h2>
+          <p className="text-gray-600 mb-6">Running with sample data. Connect to Supabase for full functionality.</p>
+          <p className="text-sm text-gray-500">Click "Connect to Supabase" in the top right to set up your database.</p>
         </div>
       </div>
     );
   }
+
+  // Show Supabase connection notice if not configured
+  const showSupabaseNotice = !isSupabaseConfigured();
 
   const generateDrinkImage = (name: string) => {
     if (name === 'Taro Milk Tea') {
@@ -286,6 +291,12 @@ export default function App() {
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-purple-100 sticky top-0 z-50 shadow-sm">
+        {showSupabaseNotice && (
+          <div className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-center py-2 text-sm font-medium">
+            <Sparkles className="w-4 h-4 inline mr-2" />
+            Demo Mode: Using sample data. Connect to Supabase for full functionality.
+          </div>
+        )}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center space-x-4">

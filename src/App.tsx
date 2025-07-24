@@ -5,12 +5,6 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cart, setCart] = useState<{[key: string]: number}>({});
   const [showImages, setShowImages] = useState(false);
-  const [selectedDrink, setSelectedDrink] = useState<string | null>(null);
-  const [customizations, setCustomizations] = useState({
-    toppings: [] as string[],
-    milk: 'regular',
-    sweetness: 'regular'
-  });
 
   const drinks = [
     { name: 'Classic Milk Tea', price: 4.50, category: 'milk-tea', popular: true },
@@ -37,6 +31,34 @@ export default function App() {
     { name: 'Grapefruit Green Tea', price: 4.25, category: 'fruit-tea' },
     { name: 'Vanilla Milk Tea', price: 4.75, category: 'milk-tea' },
     { name: 'Lemon Honey Tea', price: 3.50, category: 'tea' }
+  ];
+
+  const toppings = [
+    { name: 'Tapioca Pearls', price: 0.50 },
+    { name: 'Popping Boba', price: 0.60 },
+    { name: 'Jelly', price: 0.50 },
+    { name: 'Pudding', price: 0.70 },
+    { name: 'Red Bean', price: 0.60 },
+    { name: 'Taro Balls', price: 0.65 },
+    { name: 'Grass Jelly', price: 0.55 },
+    { name: 'Aloe Vera', price: 0.60 }
+  ];
+
+  const milkOptions = [
+    { name: 'Regular Milk', price: 0 },
+    { name: 'Oat Milk', price: 0.50 },
+    { name: 'Almond Milk', price: 0.50 },
+    { name: 'Coconut Milk', price: 0.50 },
+    { name: 'Soy Milk', price: 0.40 },
+    { name: 'Non-Dairy Creamer', price: 0 }
+  ];
+
+  const sweetnessLevels = [
+    { name: '0% (No Sugar)', price: 0 },
+    { name: '25% (Less Sweet)', price: 0 },
+    { name: '50% (Half Sweet)', price: 0 },
+    { name: '75% (Regular)', price: 0 },
+    { name: '100% (Extra Sweet)', price: 0 }
   ];
 
   const categories = [
@@ -101,9 +123,48 @@ export default function App() {
     : drinks.filter(drink => drink.category === selectedCategory);
 
   const addToCart = (drinkName: string) => {
+    setSelectedDrink(drinkName);
+    setCustomizations({
+      toppings: [],
+      milk: 'regular',
+      sweetness: 'regular'
+    });
+  };
+
+  const addCustomizedDrinkToCart = () => {
+    if (!selectedDrink) return;
+    
+    const baseDrink = drinks.find(d => d.name === selectedDrink);
+    if (!baseDrink) return;
+    
+    let totalPrice = baseDrink.price;
+    
+    // Add topping prices
+    customizations.toppings.forEach(toppingName => {
+      const topping = toppings.find(t => t.name === toppingName);
+      if (topping) totalPrice += topping.price;
+    });
+    
+    // Add milk price
+    const selectedMilk = milkOptions.find(m => m.name.toLowerCase().includes(customizations.milk));
+    if (selectedMilk) totalPrice += selectedMilk.price;
+    
+    const cartKey = `${selectedDrink} (${customizations.toppings.join(', ') || 'No toppings'}, ${customizations.milk} milk, ${customizations.sweetness} sweet) - $${totalPrice.toFixed(2)}`;
+    
     setCart(prev => ({
       ...prev,
-      [drinkName]: (prev[drinkName] || 0) + 1
+      [cartKey]: (prev[cartKey] || 0) + 1
+    }));
+    
+    setSelectedDrink(null);
+  };
+
+  const toggleTopping = (toppingName: string) => {
+    setCustomizations(prev => ({
+      ...prev,
+      toppings: prev.toppings.includes(toppingName)
+        ? prev.toppings.filter(t => t !== toppingName)
+        : [...prev.toppings, toppingName]
     }));
   };
 
@@ -481,7 +542,7 @@ export default function App() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-purple-600/30 to-pink-600/30 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
                   <Plus className="w-5 h-5" />
-                  <span>Add to Cart</span>
+                  <span>Customize & Add</span>
                 </button>
               </div>
             ))}

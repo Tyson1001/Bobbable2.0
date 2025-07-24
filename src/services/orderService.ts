@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured } from '../lib/supabase';
 import type { Order, OrderItem, Drink, Topping, MilkOption, SweetnessLevel } from '../lib/supabase';
 
 export interface CartItem {
@@ -20,6 +21,10 @@ export interface CreateOrderRequest {
 export class OrderService {
   static async createOrder(orderData: CreateOrderRequest): Promise<Order> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       // Start a transaction by creating the order first
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -83,6 +88,10 @@ export class OrderService {
 
   static async getOrder(orderId: string): Promise<Order | null> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       const { data, error } = await supabase
         .from('orders')
         .select('*')
@@ -106,6 +115,10 @@ export class OrderService {
 
   static async getOrderItems(orderId: string): Promise<OrderItem[]> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       const { data, error } = await supabase
         .from('order_items')
         .select(`
@@ -139,6 +152,10 @@ export class OrderService {
 
   static async updateOrderStatus(orderId: string, status: Order['status']): Promise<Order> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       const { data, error } = await supabase
         .from('orders')
         .update({ 
@@ -163,6 +180,10 @@ export class OrderService {
 
   static async updatePaymentStatus(orderId: string, paymentStatus: Order['payment_status']): Promise<Order> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       const { data, error } = await supabase
         .from('orders')
         .update({ 

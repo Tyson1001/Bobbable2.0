@@ -1,9 +1,14 @@
 import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured } from '../lib/supabase';
 import type { Drink, Topping, MilkOption, SweetnessLevel } from '../lib/supabase';
 
 export class MenuService {
   static async getDrinks(): Promise<Drink[]> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       const { data, error } = await supabase
         .from('drinks')
         .select('*')
@@ -23,6 +28,10 @@ export class MenuService {
 
   static async getDrinksByCategory(category: string): Promise<Drink[]> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       if (category === 'all') {
         return this.getDrinks();
       }
@@ -47,6 +56,10 @@ export class MenuService {
 
   static async getToppings(): Promise<Topping[]> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       const { data, error } = await supabase
         .from('toppings')
         .select('*')
@@ -67,6 +80,10 @@ export class MenuService {
 
   static async getMilkOptions(): Promise<MilkOption[]> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       const { data, error } = await supabase
         .from('milk_options')
         .select('*')
@@ -87,6 +104,10 @@ export class MenuService {
 
   static async getSweetnessLevels(): Promise<SweetnessLevel[]> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       const { data, error } = await supabase
         .from('sweetness_levels')
         .select('*')
@@ -106,6 +127,10 @@ export class MenuService {
 
   static async getPopularDrinks(): Promise<Drink[]> {
     try {
+      if (!isSupabaseConfigured() || !supabase) {
+        throw new Error('Supabase is not configured. Please connect to Supabase.');
+      }
+
       const { data, error } = await supabase
         .from('drinks')
         .select('*')

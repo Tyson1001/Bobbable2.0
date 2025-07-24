@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, ShoppingCart, Coffee, Sparkles, Plus, Eye, Star, Clock, Award, Users, Heart } from 'lucide-react';
+import { Menu, X, ShoppingCart, Sparkles, Plus, Eye, Star, Clock, Award, Users, Heart } from 'lucide-react';
 
 export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -34,11 +34,38 @@ export default function App() {
   ];
 
   const categories = [
-    { id: 'all', name: 'All Drinks', icon: Coffee },
-    { id: 'milk-tea', name: 'Milk Tea', icon: Coffee },
+    { id: 'all', name: 'All Drinks', icon: () => (
+      <svg viewBox="0 0 24 32" className="w-5 h-5">
+        <path d="M5 8 L19 8 L18 28 L6 28 Z" fill="currentColor" opacity="0.3"/>
+        <path d="M6 9 L18 9 L17 27 L7 27 Z" fill="currentColor" opacity="0.7"/>
+        <ellipse cx="12" cy="9" rx="6" ry="2" fill="currentColor"/>
+        <circle cx="9" cy="25" r="1" fill="currentColor"/>
+        <circle cx="12" cy="26" r="1" fill="currentColor"/>
+        <circle cx="15" cy="25" r="1" fill="currentColor"/>
+      </svg>
+    ) },
+    { id: 'milk-tea', name: 'Milk Tea', icon: () => (
+      <svg viewBox="0 0 24 32" className="w-5 h-5">
+        <path d="M5 8 L19 8 L18 28 L6 28 Z" fill="currentColor" opacity="0.3"/>
+        <path d="M6 9 L18 9 L17 27 L7 27 Z" fill="currentColor" opacity="0.7"/>
+        <ellipse cx="12" cy="9" rx="6" ry="2" fill="currentColor"/>
+        <circle cx="9" cy="25" r="1" fill="currentColor"/>
+        <circle cx="12" cy="26" r="1" fill="currentColor"/>
+        <circle cx="15" cy="25" r="1" fill="currentColor"/>
+      </svg>
+    ) },
     { id: 'fruit-tea', name: 'Fruit Tea', icon: Heart },
     { id: 'specialty', name: 'Specialty', icon: Sparkles },
-    { id: 'tea', name: 'Pure Tea', icon: Coffee },
+    { id: 'tea', name: 'Pure Tea', icon: () => (
+      <svg viewBox="0 0 24 32" className="w-5 h-5">
+        <path d="M5 8 L19 8 L18 28 L6 28 Z" fill="currentColor" opacity="0.3"/>
+        <path d="M6 9 L18 9 L17 27 L7 27 Z" fill="currentColor" opacity="0.7"/>
+        <ellipse cx="12" cy="9" rx="6" ry="2" fill="currentColor"/>
+        <circle cx="9" cy="25" r="1" fill="currentColor"/>
+        <circle cx="12" cy="26" r="1" fill="currentColor"/>
+        <circle cx="15" cy="25" r="1" fill="currentColor"/>
+      </svg>
+    ) },
     { id: 'smoothie', name: 'Smoothies', icon: Heart }
   ];
 
@@ -290,7 +317,7 @@ export default function App() {
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-pulse"></div>
                 <span className="flex items-center space-x-3">
                   <span>Order Now</span>
-                  <Coffee className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300" />
+                  <svg viewBox="0 0 48 64" className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300 fill-white">
                 </span>
               </button>
               

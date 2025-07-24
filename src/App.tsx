@@ -33,6 +33,34 @@ export default function App() {
     { name: 'Lemon Honey Tea', price: 3.50, category: 'tea' }
   ];
 
+  const toppings = [
+    { name: 'Tapioca Pearls', price: 0.50 },
+    { name: 'Popping Boba', price: 0.60 },
+    { name: 'Jelly', price: 0.50 },
+    { name: 'Pudding', price: 0.70 },
+    { name: 'Red Bean', price: 0.60 },
+    { name: 'Taro Balls', price: 0.65 },
+    { name: 'Grass Jelly', price: 0.55 },
+    { name: 'Aloe Vera', price: 0.60 }
+  ];
+
+  const milkOptions = [
+    { name: 'Regular Milk', price: 0 },
+    { name: 'Oat Milk', price: 0.50 },
+    { name: 'Almond Milk', price: 0.50 },
+    { name: 'Coconut Milk', price: 0.50 },
+    { name: 'Soy Milk', price: 0.40 },
+    { name: 'Non-Dairy Creamer', price: 0 }
+  ];
+
+  const sweetnessLevels = [
+    { name: '0% (No Sugar)', price: 0 },
+    { name: '25% (Less Sweet)', price: 0 },
+    { name: '50% (Half Sweet)', price: 0 },
+    { name: '75% (Regular)', price: 0 },
+    { name: '100% (Extra Sweet)', price: 0 }
+  ];
+
   const categories = [
     { id: 'all', name: 'All Drinks', icon: () => (
       <svg viewBox="0 0 24 32" className="w-5 h-5">
@@ -95,9 +123,48 @@ export default function App() {
     : drinks.filter(drink => drink.category === selectedCategory);
 
   const addToCart = (drinkName: string) => {
+    setSelectedDrink(drinkName);
+    setCustomizations({
+      toppings: [],
+      milk: 'regular',
+      sweetness: 'regular'
+    });
+  };
+
+  const addCustomizedDrinkToCart = () => {
+    if (!selectedDrink) return;
+    
+    const baseDrink = drinks.find(d => d.name === selectedDrink);
+    if (!baseDrink) return;
+    
+    let totalPrice = baseDrink.price;
+    
+    // Add topping prices
+    customizations.toppings.forEach(toppingName => {
+      const topping = toppings.find(t => t.name === toppingName);
+      if (topping) totalPrice += topping.price;
+    });
+    
+    // Add milk price
+    const selectedMilk = milkOptions.find(m => m.name.toLowerCase().includes(customizations.milk));
+    if (selectedMilk) totalPrice += selectedMilk.price;
+    
+    const cartKey = `${selectedDrink} (${customizations.toppings.join(', ') || 'No toppings'}, ${customizations.milk} milk, ${customizations.sweetness} sweet) - $${totalPrice.toFixed(2)}`;
+    
     setCart(prev => ({
       ...prev,
-      [drinkName]: (prev[drinkName] || 0) + 1
+      [cartKey]: (prev[cartKey] || 0) + 1
+    }));
+    
+    setSelectedDrink(null);
+  };
+
+  const toggleTopping = (toppingName: string) => {
+    setCustomizations(prev => ({
+      ...prev,
+      toppings: prev.toppings.includes(toppingName)
+        ? prev.toppings.filter(t => t !== toppingName)
+        : [...prev.toppings, toppingName]
     }));
   };
 
@@ -106,9 +173,10 @@ export default function App() {
   };
 
   const getTotalPrice = () => {
-    return Object.entries(cart).reduce((sum, [name, count]) => {
-      const drink = drinks.find(d => d.name === name);
-      return sum + (drink ? drink.price * count : 0);
+    return Object.entries(cart).reduce((sum, [cartItem, count]) => {
+      const priceMatch = cartItem.match(/\$(\d+\.\d+)$/);
+      const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
+      return sum + (price * count);
     }, 0);
   };
 
@@ -475,7 +543,7 @@ export default function App() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-purple-600/30 to-pink-600/30 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
                   <Plus className="w-5 h-5" />
-                  <span>Add to Cart</span>
+                  <span>Customize & Add</span>
                 </button>
               </div>
             ))}
@@ -495,9 +563,9 @@ export default function App() {
           <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
             {Object.entries(cart).map(([name, count]) => (
               <div key={name} className="flex justify-between items-center text-sm">
-                <span className="text-gray-700">{name} x{count}</span>
+                <span className="text-gray-700 flex-1 pr-2">{name} x{count}</span>
                 <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  ${((drinks.find(d => d.name === name)?.price || 0) * count).toFixed(2)}
+                  ${(parseFloat(name.match(/\$(\d+\.\d+)$/)?.[1] || '0') * count).toFixed(2)}
                 </span>
               </div>
             ))}

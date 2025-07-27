@@ -167,7 +167,7 @@ export default function App() {
       return (
         <svg viewBox="0 0 120 160" className="w-full h-full">
           <defs>
-            <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
               <stop offset="0%" stopColor="#E6D7FF" />
               <stop offset="30%" stopColor="#D4B5FF" />
               <stop offset="70%" stopColor="#B794F6" />
@@ -228,7 +228,7 @@ export default function App() {
     return (
       <svg viewBox="0 0 120 160" className="w-full h-full">
         <defs>
-          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
             <stop offset="0%" stopColor={color} stopOpacity="0.8" />
             <stop offset="100%" stopColor={color} stopOpacity="1" />
           </linearGradient>

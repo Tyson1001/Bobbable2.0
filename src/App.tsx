@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Menu, X, ShoppingCart, Sparkles, Plus, Eye, Star, Clock, Award, Users, Heart, Minus, Trash2 } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoadingScreen, LoadingSpinner } from './components/LoadingSpinner';
+import { QRCodeGenerator } from './components/QRCodeGenerator';
 import { useMenu } from './hooks/useMenu';
 import { useCart } from './hooks/useCart';
 import type { Drink, Topping, MilkOption, SweetnessLevel } from './lib/supabase';
@@ -28,6 +29,8 @@ export default function App() {
   const [showCart, setShowCart] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({ name: '', email: '' });
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<{ id: string; totalAmount: number; customerName?: string } | null>(null);
 
   // Update filtered drinks when category or drinks change
   React.useEffect(() => {
@@ -128,9 +131,17 @@ export default function App() {
   const handleCheckout = async () => {
     try {
       const order = await submitOrder(customerInfo.name || customerInfo.email ? customerInfo : undefined);
-      alert(`Order placed successfully! Order ID: ${order.id}`);
+      
+      // Set completed order data and show QR code
+      setCompletedOrder({
+        id: order.id,
+        totalAmount: getTotalPrice(),
+        customerName: customerInfo.name || undefined
+      });
+      
       setShowCheckout(false);
       setShowCart(false);
+      setShowQRCode(true);
       setCustomerInfo({ name: '', email: '' });
     } catch (error) {
       console.error('Checkout error:', error);
@@ -842,6 +853,19 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQRCode && completedOrder && (
+        <QRCodeGenerator
+          orderId={completedOrder.id}
+          customerName={completedOrder.customerName}
+          totalAmount={completedOrder.totalAmount}
+          onClose={() => {
+            setShowQRCode(false);
+            setCompletedOrder(null);
+          }}
+        />
       )}
       </div>
     </ErrorBoundary>

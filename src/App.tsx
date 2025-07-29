@@ -1,782 +1,849 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { QrCode, Download, Copy, Palette, Settings, Smartphone, Link, Mail, Wifi, MessageSquare, Phone, MapPin, Calendar, User, CreditCard, Eye, EyeOff, RefreshCw, Sparkles } from 'lucide-react';
-import QRCodeLib from 'qrcode';
+import React, { useState } from 'react';
+import { Menu, X, ShoppingCart, Sparkles, Plus, Eye, Star, Clock, Award, Users, Heart, Minus, Trash2 } from 'lucide-react';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { LoadingScreen, LoadingSpinner } from './components/LoadingSpinner';
+import { useMenu } from './hooks/useMenu';
+import { useCart } from './hooks/useCart';
+import type { Drink, Topping, MilkOption, SweetnessLevel } from './lib/supabase';
 
-type QRType = 'text' | 'url' | 'email' | 'phone' | 'sms' | 'wifi' | 'location' | 'event' | 'contact' | 'payment';
-
-interface QROptions {
-  errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H';
-  type: 'image/png' | 'image/jpeg' | 'image/webp';
-  quality: number;
-  margin: number;
-  color: {
-    dark: string;
-    light: string;
-  };
-  width: number;
-}
-
-interface WiFiData {
-  ssid: string;
-  password: string;
-  security: 'WPA' | 'WEP' | 'nopass';
-  hidden: boolean;
-}
-
-interface ContactData {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
-  organization: string;
-  url: string;
-}
-
-interface EventData {
-  title: string;
-  description: string;
-  location: string;
-  startDate: string;
-  endDate: string;
-}
+import { isSupabaseConfigured } from './lib/supabase';
 
 export default function App() {
-  const [qrType, setQrType] = useState<QRType>('text');
-  const [text, setText] = useState('');
-  const [qrDataURL, setQrDataURL] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Use custom hooks for data management
+  const { drinks, toppings, milkOptions, sweetnessLevels, loading, error, getDrinksByCategory } = useMenu();
+  const { cartItems, addToCart, removeFromCart, updateQuantity, getTotalItems, getTotalPrice, submitOrder, isSubmitting } = useCart();
   
-  // Advanced options
-  const [qrOptions, setQrOptions] = useState<QROptions>({
-    errorCorrectionLevel: 'M',
-    type: 'image/png',
-    quality: 0.92,
-    margin: 4,
-    color: {
-      dark: '#000000',
-      light: '#FFFFFF'
-    },
-    width: 512
+  // UI state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showImages, setShowImages] = useState(false);
+  const [selectedDrink, setSelectedDrink] = useState<string | null>(null);
+  const [selectedDrinkData, setSelectedDrinkData] = useState<Drink | null>(null);
+  const [customizations, setCustomizations] = useState({
+    toppings: [] as Topping[],
+    milkOption: null as MilkOption | null,
+    sweetnessLevel: null as SweetnessLevel | null
   });
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [filteredDrinks, setFilteredDrinks] = useState<Drink[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState({ name: '', email: '' });
+  const [showCheckout, setShowCheckout] = useState(false);
 
-  // Specialized data states
-  const [wifiData, setWifiData] = useState<WiFiData>({
-    ssid: '',
-    password: '',
-    security: 'WPA',
-    hidden: false
-  });
+  // Update filtered drinks when category or drinks change
+  React.useEffect(() => {
+    const updateFilteredDrinks = async () => {
+      if (selectedCategory === 'all') {
+        setFilteredDrinks(drinks);
+      } else {
+        const categoryDrinks = await getDrinksByCategory(selectedCategory);
+        setFilteredDrinks(categoryDrinks);
+      }
+    };
+    
+    if (drinks.length > 0) {
+      updateFilteredDrinks();
+    }
+  }, [selectedCategory, drinks, getDrinksByCategory]);
 
-  const [contactData, setContactData] = useState<ContactData>({
-    firstName: '',
-    lastName: '',
-    phone: '',
-    email: '',
-    organization: '',
-    url: ''
-  });
-
-  const [eventData, setEventData] = useState<EventData>({
-    title: '',
-    description: '',
-    location: '',
-    startDate: '',
-    endDate: ''
-  });
-
-  const qrTypes = [
-    { id: 'text', name: 'Text', icon: MessageSquare, description: 'Plain text or message' },
-    { id: 'url', name: 'Website', icon: Link, description: 'Website URL or link' },
-    { id: 'email', name: 'Email', icon: Mail, description: 'Email address with subject' },
-    { id: 'phone', name: 'Phone', icon: Phone, description: 'Phone number for calling' },
-    { id: 'sms', name: 'SMS', icon: MessageSquare, description: 'Text message with number' },
-    { id: 'wifi', name: 'WiFi', icon: Wifi, description: 'WiFi network credentials' },
-    { id: 'location', name: 'Location', icon: MapPin, description: 'GPS coordinates or address' },
-    { id: 'event', name: 'Event', icon: Calendar, description: 'Calendar event details' },
-    { id: 'contact', name: 'Contact', icon: User, description: 'Contact information (vCard)' },
-    { id: 'payment', name: 'Payment', icon: CreditCard, description: 'Payment information' }
+  const categories = [
+    { id: 'all', name: 'All Drinks', icon: () => (
+      <svg viewBox="0 0 24 32" className="w-5 h-5">
+        <path d="M5 8 L19 8 L18 28 L6 28 Z" fill="currentColor" opacity="0.3"/>
+        <path d="M6 9 L18 9 L17 27 L7 27 Z" fill="currentColor" opacity="0.7"/>
+        <ellipse cx="12" cy="9" rx="6" ry="2" fill="currentColor"/>
+        <circle cx="9" cy="25" r="1" fill="currentColor"/>
+        <circle cx="12" cy="26" r="1" fill="currentColor"/>
+        <circle cx="15" cy="25" r="1" fill="currentColor"/>
+      </svg>
+    ) },
+    { id: 'milk-tea', name: 'Milk Tea', icon: () => (
+      <svg viewBox="0 0 24 32" className="w-5 h-5">
+        <path d="M5 8 L19 8 L18 28 L6 28 Z" fill="currentColor" opacity="0.3"/>
+        <path d="M6 9 L18 9 L17 27 L7 27 Z" fill="currentColor" opacity="0.7"/>
+        <ellipse cx="12" cy="9" rx="6" ry="2" fill="currentColor"/>
+        <circle cx="9" cy="25" r="1" fill="currentColor"/>
+        <circle cx="12" cy="26" r="1" fill="currentColor"/>
+        <circle cx="15" cy="25" r="1" fill="currentColor"/>
+      </svg>
+    ) }
   ];
 
-  const generateQRData = (): string => {
-    switch (qrType) {
-      case 'url':
-        return text.startsWith('http') ? text : `https://${text}`;
-      case 'email':
-        const [email, subject] = text.split('|');
-        return `mailto:${email}${subject ? `?subject=${encodeURIComponent(subject)}` : ''}`;
-      case 'phone':
-        return `tel:${text}`;
-      case 'sms':
-        const [number, message] = text.split('|');
-        return `sms:${number}${message ? `?body=${encodeURIComponent(message)}` : ''}`;
-      case 'wifi':
-        return `WIFI:T:${wifiData.security};S:${wifiData.ssid};P:${wifiData.password};H:${wifiData.hidden ? 'true' : 'false'};;`;
-      case 'location':
-        if (text.includes(',')) {
-          const [lat, lng] = text.split(',').map(s => s.trim());
-          return `geo:${lat},${lng}`;
-        }
-        return `geo:0,0?q=${encodeURIComponent(text)}`;
-      case 'event':
-        const formatDate = (date: string) => date.replace(/[-:]/g, '').replace('T', '') + '00Z';
-        return `BEGIN:VEVENT\nSUMMARY:${eventData.title}\nDESCRIPTION:${eventData.description}\nLOCATION:${eventData.location}\nDTSTART:${formatDate(eventData.startDate)}\nDTEND:${formatDate(eventData.endDate)}\nEND:VEVENT`;
-      case 'contact':
-        return `BEGIN:VCARD\nVERSION:3.0\nFN:${contactData.firstName} ${contactData.lastName}\nORG:${contactData.organization}\nTEL:${contactData.phone}\nEMAIL:${contactData.email}\nURL:${contactData.url}\nEND:VCARD`;
-      case 'payment':
-        return text; // Assuming payment format like "bitcoin:address?amount=0.1"
-      default:
-        return text;
-    }
+  const handleAddToCart = (drink: Drink) => {
+    setSelectedDrink(drink.name);
+    setSelectedDrinkData(drink);
+    setCustomizations({
+      toppings: [],
+      milkOption: milkOptions.find(m => m.name === 'Regular Milk') || milkOptions[0] || null,
+      sweetnessLevel: sweetnessLevels.find(s => s.level === 75) || sweetnessLevels[0] || null
+    });
   };
 
-  const generateQRCode = async () => {
-    const qrData = generateQRData();
-    if (!qrData.trim()) return;
-
-    setIsGenerating(true);
-    try {
-      const dataURL = await QRCodeLib.toDataURL(qrData, {
-        errorCorrectionLevel: qrOptions.errorCorrectionLevel,
-        type: qrOptions.type,
-        quality: qrOptions.quality,
-        margin: qrOptions.margin,
-        color: qrOptions.color,
-        width: qrOptions.width
-      });
-      setQrDataURL(dataURL);
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const downloadQRCode = () => {
-    if (!qrDataURL) return;
+  const handleAddCustomizedDrinkToCart = () => {
+    if (!selectedDrinkData || !customizations.milkOption || !customizations.sweetnessLevel) return;
     
-    const link = document.createElement('a');
-    link.download = `qrcode-${qrType}-${Date.now()}.${qrOptions.type.split('/')[1]}`;
-    link.href = qrDataURL;
-    link.click();
-  };
-
-  const copyToClipboard = async () => {
-    if (!qrDataURL) return;
+    addToCart(
+      selectedDrinkData,
+      customizations.toppings,
+      customizations.milkOption,
+      customizations.sweetnessLevel
+    );
     
+    setSelectedDrink(null);
+    setSelectedDrinkData(null);
+  };
+
+  const toggleTopping = (topping: Topping) => {
+    setCustomizations(prev => ({
+      ...prev,
+      toppings: prev.toppings.find(t => t.id === topping.id)
+        ? prev.toppings.filter(t => t.id !== topping.id)
+        : [...prev.toppings, topping]
+    }));
+  };
+
+  const setMilkOption = (milkOption: MilkOption) => {
+    setCustomizations(prev => ({
+      ...prev,
+      milkOption
+    }));
+  };
+
+  const setSweetnessLevel = (sweetnessLevel: SweetnessLevel) => {
+    setCustomizations(prev => ({
+      ...prev,
+      sweetnessLevel
+    }));
+  };
+
+  const calculateCustomizationPrice = () => {
+    if (!selectedDrinkData || !customizations.milkOption) return 0;
+    
+    let total = selectedDrinkData.price;
+    total += customizations.toppings.reduce((sum, topping) => sum + topping.price, 0);
+    total += customizations.milkOption.price;
+    
+    return total;
+  };
+
+  const handleCheckout = async () => {
     try {
-      const response = await fetch(qrDataURL);
-      const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob })
-      ]);
-      alert('QR code copied to clipboard!');
+      const order = await submitOrder(customerInfo.name || customerInfo.email ? customerInfo : undefined);
+      alert(`Order placed successfully! Order ID: ${order.id}`);
+      setShowCheckout(false);
+      setShowCart(false);
+      setCustomerInfo({ name: '', email: '' });
     } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      alert('Failed to copy QR code to clipboard');
+      console.error('Checkout error:', error);
+      alert('Failed to place order. Please try again.');
     }
   };
 
-  useEffect(() => {
-    if (text || qrType === 'wifi' || qrType === 'contact' || qrType === 'event') {
-      const timer = setTimeout(generateQRCode, 300);
-      return () => clearTimeout(timer);
+  // Show loading screen while data is loading
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  // Show error message if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 shadow-2xl border-2 border-red-200/50 max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="w-10 h-10 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Demo Mode</h2>
+          <p className="text-gray-600 mb-6">Running with sample data. Connect to Supabase for full functionality.</p>
+          <p className="text-sm text-gray-500">Click "Connect to Supabase" in the top right to set up your database.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show Supabase connection notice if not configured
+  const showSupabaseNotice = !isSupabaseConfigured();
+
+  const generateDrinkImage = (name: string) => {
+    if (name === 'Taro Milk Tea') {
+      return (
+        <svg viewBox="0 0 120 160" className="w-full h-full">
+          <defs>
+            <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
+              <stop offset="0%" stopColor="#E6D7FF" />
+              <stop offset="30%" stopColor="#D4B5FF" />
+              <stop offset="70%" stopColor="#B794F6" />
+              <stop offset="100%" stopColor="#9F7AEA" />
+            </linearGradient>
+            <linearGradient id="cupGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#F7FAFC" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#EDF2F7" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="#E2E8F0" stopOpacity="0.9" />
+            </linearGradient>
+          </defs>
+          
+          {/* Cup */}
+          <path d="M25 40 L95 40 L90 140 L30 140 Z" fill="url(#cupGradient)" stroke="#CBD5E0" strokeWidth="2"/>
+          
+          {/* Taro milk tea with gradient */}
+          <path d="M27 42 L93 42 L88 138 L32 138 Z" fill={`url(#gradient-${name.replace(/\s+/g, '')})`}/>
+          
+          {/* Foam layer */}
+          <ellipse cx="60" cy="42" rx="33" ry="8" fill="#FFFFFF" opacity="0.9"/>
+          <ellipse cx="60" cy="40" rx="33" ry="6" fill="#F7FAFC"/>
+          
+          {/* Foam bubbles */}
+          <circle cx="45" cy="38" r="2" fill="#FFFFFF" opacity="0.8"/>
+          <circle cx="75" cy="39" r="1.5" fill="#FFFFFF" opacity="0.7"/>
+          <circle cx="60" cy="37" r="1" fill="#FFFFFF" opacity="0.9"/>
+          
+          {/* Taro color swirls */}
+          <path d="M35 60 Q50 55 65 65 T85 70" stroke="#D4B5FF" strokeWidth="3" fill="none" opacity="0.6"/>
+          <path d="M40 80 Q55 75 70 85 T80 90" stroke="#E6D7FF" strokeWidth="2" fill="none" opacity="0.5"/>
+          
+          {/* Tapioca pearls */}
+          <circle cx="45" cy="125" r="4" fill="#2D3748"/>
+          <circle cx="55" cy="130" r="3.5" fill="#1A202C"/>
+          <circle cx="65" cy="128" r="4" fill="#2D3748"/>
+          <circle cx="75" cy="132" r="3" fill="#1A202C"/>
+          <circle cx="50" cy="120" r="3" fill="#2D3748"/>
+          <circle cx="70" cy="120" r="3.5" fill="#1A202C"/>
+          
+          {/* Cup rim */}
+          <ellipse cx="60" cy="40" rx="35" ry="8" fill="none" stroke="#A0AEC0" strokeWidth="2"/>
+          
+          {/* Cup highlights */}
+          <path d="M30 45 L30 135" stroke="#FFFFFF" strokeWidth="2" opacity="0.3"/>
+          <path d="M90 45 L85 135" stroke="#CBD5E0" strokeWidth="1" opacity="0.5"/>
+          
+          {/* Straw */}
+          <rect x="75" y="20" width="4" height="100" fill="#E53E3E" rx="2"/>
+          <rect x="76" y="20" width="2" height="100" fill="#FC8181" rx="1"/>
+        </svg>
+      );
     }
-  }, [text, qrType, qrOptions, wifiData, contactData, eventData]);
-
-  const renderInputFields = () => {
-    const currentType = qrTypes.find(type => type.id === qrType);
-    const IconComponent = currentType?.icon || MessageSquare;
-
-    switch (qrType) {
-      case 'text':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">Plain Text</h3>
-                <p className="text-sm text-gray-600">Enter any text or message</p>
-              </div>
-            </div>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Enter your text here..."
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none resize-none h-32 font-mono text-sm"
-            />
-          </div>
-        );
-
-      case 'url':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">Website URL</h3>
-                <p className="text-sm text-gray-600">Enter a website address</p>
-              </div>
-            </div>
-            <input
-              type="url"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="https://example.com"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none font-mono text-sm"
-            />
-          </div>
-        );
-
-      case 'email':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">Email Address</h3>
-                <p className="text-sm text-gray-600">Email with optional subject</p>
-              </div>
-            </div>
-            <input
-              type="email"
-              value={text.split('|')[0] || ''}
-              onChange={(e) => {
-                const subject = text.split('|')[1] || '';
-                setText(`${e.target.value}${subject ? `|${subject}` : ''}`);
-              }}
-              placeholder="email@example.com"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-            <input
-              type="text"
-              value={text.split('|')[1] || ''}
-              onChange={(e) => {
-                const email = text.split('|')[0] || '';
-                setText(`${email}${e.target.value ? `|${e.target.value}` : ''}`);
-              }}
-              placeholder="Subject (optional)"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-          </div>
-        );
-
-      case 'phone':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">Phone Number</h3>
-                <p className="text-sm text-gray-600">Phone number for calling</p>
-              </div>
-            </div>
-            <input
-              type="tel"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="+1234567890"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none font-mono"
-            />
-          </div>
-        );
-
-      case 'sms':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">SMS Message</h3>
-                <p className="text-sm text-gray-600">Phone number and message</p>
-              </div>
-            </div>
-            <input
-              type="tel"
-              value={text.split('|')[0] || ''}
-              onChange={(e) => {
-                const message = text.split('|')[1] || '';
-                setText(`${e.target.value}${message ? `|${message}` : ''}`);
-              }}
-              placeholder="+1234567890"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none font-mono"
-            />
-            <textarea
-              value={text.split('|')[1] || ''}
-              onChange={(e) => {
-                const phone = text.split('|')[0] || '';
-                setText(`${phone}${e.target.value ? `|${e.target.value}` : ''}`);
-              }}
-              placeholder="Message (optional)"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none resize-none h-24"
-            />
-          </div>
-        );
-
-      case 'wifi':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">WiFi Network</h3>
-                <p className="text-sm text-gray-600">Network credentials for easy connection</p>
-              </div>
-            </div>
-            <input
-              type="text"
-              value={wifiData.ssid}
-              onChange={(e) => setWifiData(prev => ({ ...prev, ssid: e.target.value }))}
-              placeholder="Network Name (SSID)"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-            <input
-              type="password"
-              value={wifiData.password}
-              onChange={(e) => setWifiData(prev => ({ ...prev, password: e.target.value }))}
-              placeholder="Password"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none font-mono"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <select
-                value={wifiData.security}
-                onChange={(e) => setWifiData(prev => ({ ...prev, security: e.target.value as 'WPA' | 'WEP' | 'nopass' }))}
-                className="p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-              >
-                <option value="WPA">WPA/WPA2</option>
-                <option value="WEP">WEP</option>
-                <option value="nopass">No Password</option>
-              </select>
-              <label className="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  checked={wifiData.hidden}
-                  onChange={(e) => setWifiData(prev => ({ ...prev, hidden: e.target.checked }))}
-                  className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
-                />
-                <span className="text-sm font-medium text-gray-700">Hidden Network</span>
-              </label>
-            </div>
-          </div>
-        );
-
-      case 'location':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">Location</h3>
-                <p className="text-sm text-gray-600">GPS coordinates or address</p>
-              </div>
-            </div>
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="40.7128, -74.0060 or 123 Main St, City"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-            <p className="text-xs text-gray-500">
-              Enter coordinates as "latitude, longitude" or a street address
-            </p>
-          </div>
-        );
-
-      case 'contact':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">Contact Information</h3>
-                <p className="text-sm text-gray-600">vCard format for easy saving</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                type="text"
-                value={contactData.firstName}
-                onChange={(e) => setContactData(prev => ({ ...prev, firstName: e.target.value }))}
-                placeholder="First Name"
-                className="p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-              />
-              <input
-                type="text"
-                value={contactData.lastName}
-                onChange={(e) => setContactData(prev => ({ ...prev, lastName: e.target.value }))}
-                placeholder="Last Name"
-                className="p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-              />
-            </div>
-            <input
-              type="tel"
-              value={contactData.phone}
-              onChange={(e) => setContactData(prev => ({ ...prev, phone: e.target.value }))}
-              placeholder="Phone Number"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-            <input
-              type="email"
-              value={contactData.email}
-              onChange={(e) => setContactData(prev => ({ ...prev, email: e.target.value }))}
-              placeholder="Email Address"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-            <input
-              type="text"
-              value={contactData.organization}
-              onChange={(e) => setContactData(prev => ({ ...prev, organization: e.target.value }))}
-              placeholder="Organization (optional)"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-            <input
-              type="url"
-              value={contactData.url}
-              onChange={(e) => setContactData(prev => ({ ...prev, url: e.target.value }))}
-              placeholder="Website (optional)"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-          </div>
-        );
-
-      case 'event':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">Calendar Event</h3>
-                <p className="text-sm text-gray-600">Event details for calendar apps</p>
-              </div>
-            </div>
-            <input
-              type="text"
-              value={eventData.title}
-              onChange={(e) => setEventData(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="Event Title"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-            <textarea
-              value={eventData.description}
-              onChange={(e) => setEventData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Event Description"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none resize-none h-24"
-            />
-            <input
-              type="text"
-              value={eventData.location}
-              onChange={(e) => setEventData(prev => ({ ...prev, location: e.target.value }))}
-              placeholder="Location"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date & Time</label>
-                <input
-                  type="datetime-local"
-                  value={eventData.startDate}
-                  onChange={(e) => setEventData(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">End Date & Time</label>
-                <input
-                  type="datetime-local"
-                  value={eventData.endDate}
-                  onChange={(e) => setEventData(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'payment':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                <IconComponent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">Payment Information</h3>
-                <p className="text-sm text-gray-600">Cryptocurrency or payment URI</p>
-              </div>
-            </div>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="bitcoin:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa?amount=0.01&label=Donation"
-              className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none resize-none h-32 font-mono text-sm"
-            />
-            <p className="text-xs text-gray-500">
-              Enter a payment URI (Bitcoin, Ethereum, etc.) or payment app deep link
-            </p>
-          </div>
-        );
-
-      default:
-        return null;
-    }
+    
+    // Default colorful drink SVG for other drinks
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+    const color = colors[name.length % colors.length];
+    
+    return (
+      <svg viewBox="0 0 120 160" className="w-full h-full">
+        <defs>
+          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.8" />
+            <stop offset="100%" stopColor={color} stopOpacity="1" />
+          </linearGradient>
+        </defs>
+        
+        {/* Cup */}
+        <path d="M25 40 L95 40 L90 140 L30 140 Z" fill="#F8F9FA" stroke="#DEE2E6" strokeWidth="2"/>
+        
+        {/* Drink */}
+        <path d="M27 42 L93 42 L88 138 L32 138 Z" fill={`url(#gradient-${name.replace(/\s+/g, '')})`}/>
+        
+        {/* Foam/Ice */}
+        <ellipse cx="60" cy="42" rx="33" ry="6" fill="#FFFFFF" opacity="0.7"/>
+        
+        {/* Bubbles */}
+        <circle cx="45" cy="125" r="3" fill="#2C3E50"/>
+        <circle cx="60" cy="130" r="3" fill="#2C3E50"/>
+        <circle cx="75" cy="125" r="3" fill="#2C3E50"/>
+        
+        {/* Straw */}
+        <rect x="75" y="20" width="4" height="80" fill="#E74C3C" rx="2"/>
+      </svg>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-purple-100 sticky top-0 z-50 shadow-sm">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+      {/* Navigation */}
+      <nav className="bg-white/80 backdrop-blur-md border-b border-purple-100 sticky top-0 z-50 shadow-sm">
+        {showSupabaseNotice && (
+          <div className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-center py-2 text-sm font-medium">
+            <Sparkles className="w-4 h-4 inline mr-2" />
+            Demo Mode: Using sample data. Connect to Supabase for full functionality.
+          </div>
+        )}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex justify-between items-center h-20">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-purple-400 via-pink-400 to-orange-400 rounded-3xl shadow-xl border-2 border-white/30 backdrop-blur-sm relative overflow-hidden group hover:scale-110 transition-all duration-300">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 via-purple-500/20 to-pink-500/20 animate-pulse"></div>
-                <QrCode className="w-8 h-8 text-white" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-yellow-300/10 via-green-400/10 to-cyan-400/10"></div>
+                <svg viewBox="0 0 48 64" className="w-12 h-16">
+                  <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#E6D7FF" />
+                      <stop offset="30%" stopColor="#D4B5FF" />
+                      <stop offset="70%" stopColor="#B794F6" />
+                      <stop offset="100%" stopColor="#9F7AEA" />
+                    </linearGradient>
+                    <linearGradient id="logoCupGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#F7FAFC" stopOpacity="0.9" />
+                      <stop offset="50%" stopColor="#EDF2F7" stopOpacity="0.7" />
+                      <stop offset="100%" stopColor="#E2E8F0" stopOpacity="0.9" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Cup */}
+                  <path d="M10 16 L38 16 L36 56 L12 56 Z" fill="url(#logoCupGradient)" stroke="#E2E8F0" strokeWidth="1.5"/>
+                  
+                  {/* Boba drink with gradient */}
+                  <path d="M11 17 L37 17 L35 55 L13 55 Z" fill="url(#logoGradient)" className="drop-shadow-sm"/>
+                  
+                  {/* Foam layer */}
+                  <ellipse cx="24" cy="17" rx="13" ry="3" fill="#FFFFFF" opacity="0.95"/>
+                  <ellipse cx="24" cy="16" rx="13" ry="2" fill="#FEFEFE"/>
+                  
+                  {/* Tapioca pearls */}
+                  <circle cx="18" cy="50" r="1.5" fill="#1A202C" className="drop-shadow-sm"/>
+                  <circle cx="22" cy="52" r="1.3" fill="#2D3748" className="drop-shadow-sm"/>
+                  <circle cx="26" cy="51" r="1.5" fill="#1A202C" className="drop-shadow-sm"/>
+                  <circle cx="30" cy="53" r="1.2" fill="#2D3748" className="drop-shadow-sm"/>
+                  <circle cx="20" cy="48" r="1.2" fill="#1A202C" className="drop-shadow-sm"/>
+                  <circle cx="28" cy="48" r="1.3" fill="#2D3748" className="drop-shadow-sm"/>
+                  
+                  {/* Cup rim */}
+                  <ellipse cx="24" cy="16" rx="14" ry="3" fill="none" stroke="#CBD5E0" strokeWidth="1.5"/>
+                  
+                  {/* Straw */}
+                  <rect x="30" y="8" width="2" height="40" fill="#DC2626" rx="1" className="drop-shadow-sm"/>
+                  <rect x="30.3" y="8" width="1.4" height="40" fill="#F87171" rx="0.7"/>
+                </svg>
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
-                  QR Generator
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent animate-pulse">
+                  Bobabble
                 </h1>
-                <p className="text-sm bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent font-semibold">
-                  Create Custom QR Codes
-                </p>
+                <p className="text-sm bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent font-semibold">Premium Boba Experience</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-2xl font-medium transition-all duration-300 ${
-                  showAdvanced
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
-                    : 'bg-white/80 text-gray-700 hover:bg-white border border-purple-200'
-                }`}
+            <div className="hidden md:flex items-center space-x-8">
+              <a href="#menu" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">Menu</a>
+              <a href="#about" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">About</a>
+              <a href="#contact" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">Contact</a>
+              <button 
+                onClick={() => setShowImages(true)}
+                className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 font-medium transition-colors"
               >
-                <Settings className="w-4 h-4" />
-                <span>Advanced</span>
+                <Eye className="w-4 h-4" />
+                <span>View Images</span>
+              </button>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={() => setShowCart(true)}
+                className="relative p-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {getTotalItems() > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-lg">
+                    {getTotalItems()}
+                  </span>
+                )}
+              </button>
+              
+              <button 
+                className="md:hidden p-2 text-gray-700"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Input Section */}
-          <div className="space-y-8">
-            {/* QR Type Selection */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-purple-100">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center space-x-3">
-                <Sparkles className="w-6 h-6 text-purple-600" />
-                <span>Choose QR Type</span>
-              </h2>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {qrTypes.map((type) => {
-                  const IconComponent = type.icon;
-                  return (
-                    <button
-                      key={type.id}
-                      onClick={() => setQrType(type.id as QRType)}
-                      className={`p-4 rounded-2xl border-2 transition-all duration-300 text-left hover:scale-105 ${
-                        qrType === type.id
-                          ? 'bg-gradient-to-br from-purple-600 to-pink-600 text-white border-purple-600 shadow-xl'
-                          : 'bg-white border-gray-200 hover:border-purple-300 text-gray-700 hover:shadow-lg'
-                      }`}
-                    >
-                      <IconComponent className={`w-6 h-6 mb-2 ${qrType === type.id ? 'text-white' : 'text-purple-600'}`} />
-                      <div className="font-semibold text-sm">{type.name}</div>
-                      <div className={`text-xs mt-1 ${qrType === type.id ? 'text-purple-100' : 'text-gray-500'}`}>
-                        {type.description}
-                      </div>
-                    </button>
-                  );
-                })}
+      {/* Hero Section */}
+      <section className="relative py-40 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-pink-500/10 to-orange-400/10"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 via-purple-500/5 to-pink-500/5"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-yellow-300/5 via-green-400/5 to-cyan-400/5"></div>
+        
+        {/* Floating Elements */}
+        <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full opacity-20 animate-bounce"></div>
+        <div className="absolute top-40 right-20 w-16 h-16 bg-gradient-to-br from-pink-400 to-orange-400 rounded-full opacity-20 animate-bounce" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-40 left-20 w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full opacity-20 animate-bounce" style={{animationDelay: '2s'}}></div>
+        <div className="absolute bottom-20 right-10 w-24 h-24 bg-gradient-to-br from-green-400 to-cyan-400 rounded-full opacity-20 animate-bounce" style={{animationDelay: '0.5s'}}></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="flex justify-center mb-8">
+              <div className="flex items-center space-x-2 bg-gradient-to-r from-white/90 to-purple-50/90 backdrop-blur-sm px-8 py-4 rounded-full shadow-xl border-2 border-purple-200/50 hover:scale-105 transition-all duration-300">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-bold">Premium Quality Guaranteed</span>
               </div>
             </div>
-
-            {/* Input Fields */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-purple-100">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Enter Information</h2>
-              {renderInputFields()}
-            </div>
-
-            {/* Advanced Options */}
-            {showAdvanced && (
-              <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-purple-100">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center space-x-3">
-                  <Settings className="w-6 h-6 text-purple-600" />
-                  <span>Advanced Options</span>
-                </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Error Correction</label>
-                    <select
-                      value={qrOptions.errorCorrectionLevel}
-                      onChange={(e) => setQrOptions(prev => ({ ...prev, errorCorrectionLevel: e.target.value as 'L' | 'M' | 'Q' | 'H' }))}
-                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none"
-                    >
-                      <option value="L">Low (7%)</option>
-                      <option value="M">Medium (15%)</option>
-                      <option value="Q">Quartile (25%)</option>
-                      <option value="H">High (30%)</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Image Format</label>
-                    <select
-                      value={qrOptions.type}
-                      onChange={(e) => setQrOptions(prev => ({ ...prev, type: e.target.value as 'image/png' | 'image/jpeg' | 'image/webp' }))}
-                      className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none"
-                    >
-                      <option value="image/png">PNG</option>
-                      <option value="image/jpeg">JPEG</option>
-                      <option value="image/webp">WebP</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Size (px)</label>
-                    <input
-                      type="range"
-                      min="128"
-                      max="1024"
-                      step="64"
-                      value={qrOptions.width}
-                      onChange={(e) => setQrOptions(prev => ({ ...prev, width: parseInt(e.target.value) }))}
-                      className="w-full"
-                    />
-                    <div className="text-sm text-gray-600 mt-1">{qrOptions.width}px</div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Margin</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      value={qrOptions.margin}
-                      onChange={(e) => setQrOptions(prev => ({ ...prev, margin: parseInt(e.target.value) }))}
-                      className="w-full"
-                    />
-                    <div className="text-sm text-gray-600 mt-1">{qrOptions.margin} modules</div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Foreground Color</label>
-                    <input
-                      type="color"
-                      value={qrOptions.color.dark}
-                      onChange={(e) => setQrOptions(prev => ({ ...prev, color: { ...prev.color, dark: e.target.value } }))}
-                      className="w-full h-12 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
-                    <input
-                      type="color"
-                      value={qrOptions.color.light}
-                      onChange={(e) => setQrOptions(prev => ({ ...prev, color: { ...prev.color, light: e.target.value } }))}
-                      className="w-full h-12 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* QR Code Display */}
-          <div className="space-y-8">
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-purple-100 sticky top-32">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center space-x-3">
-                <QrCode className="w-6 h-6 text-purple-600" />
-                <span>Generated QR Code</span>
-              </h2>
+            
+            <h1 className="text-7xl md:text-8xl font-bold mb-10 leading-tight">
+              <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent animate-pulse">
+                Bubble Tea
+              </span>
+              <br />
+              <span className="bg-gradient-to-r from-gray-800 via-purple-700 to-pink-700 bg-clip-text text-transparent">Perfection</span>
+            </h1>
+            
+            <p className="text-2xl md:text-3xl bg-gradient-to-r from-gray-700 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-16 leading-relaxed max-w-4xl mx-auto font-medium">
+              Experience the finest selection of handcrafted bubble teas, made with premium ingredients 
+              and served fresh from our state-of-the-art vending machines.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+              <button className="group bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white px-12 py-6 rounded-3xl font-bold text-xl shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-110 hover:-translate-y-2 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-pulse"></div>
+                <span className="flex items-center space-x-3">
+                  <span>Order Now</span>
+                  <svg viewBox="0 0 48 64" className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300 fill-white">
+                  </svg>
+                </span>
+              </button>
               
-              <div className="flex flex-col items-center space-y-6">
-                {isGenerating ? (
-                  <div className="w-64 h-64 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <div className="flex items-center space-x-3">
-                      <RefreshCw className="w-6 h-6 text-purple-600 animate-spin" />
-                      <span className="text-gray-600">Generating...</span>
-                    </div>
-                  </div>
-                ) : qrDataURL ? (
-                  <div className="relative group">
-                    <img
-                      src={qrDataURL}
-                      alt="Generated QR Code"
-                      className="w-64 h-64 rounded-2xl shadow-lg group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-2xl transition-colors duration-300"></div>
-                  </div>
-                ) : (
-                  <div className="w-64 h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-300">
-                    <div className="text-center">
-                      <QrCode className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-500 font-medium">Enter data to generate QR code</p>
-                    </div>
-                  </div>
-                )}
-                
-                {qrDataURL && (
-                  <div className="flex space-x-4">
-                    <button
-                      onClick={downloadQRCode}
-                      className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                    >
-                      <Download className="w-5 h-5" />
-                      <span>Download</span>
-                    </button>
-                    
-                    <button
-                      onClick={copyToClipboard}
-                      className="flex items-center space-x-2 bg-white text-gray-700 px-6 py-3 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-gray-200"
-                    >
-                      <Copy className="w-5 h-5" />
-                      <span>Copy</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              {qrDataURL && (
-                <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200">
-                  <h3 className="font-semibold text-gray-800 mb-2">QR Code Details</h3>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p><span className="font-medium">Type:</span> {qrTypes.find(t => t.id === qrType)?.name}</p>
-                    <p><span className="font-medium">Size:</span> {qrOptions.width}×{qrOptions.width}px</p>
-                    <p><span className="font-medium">Format:</span> {qrOptions.type.split('/')[1].toUpperCase()}</p>
-                    <p><span className="font-medium">Error Correction:</span> {qrOptions.errorCorrectionLevel}</p>
-                  </div>
-                </div>
-              )}
+              <button className="group bg-gradient-to-r from-white/90 to-purple-50/90 backdrop-blur-sm text-gray-800 px-12 py-6 rounded-3xl font-bold text-xl shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-110 border-2 border-purple-200/50 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-100/30 via-pink-100/30 to-orange-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <span className="flex items-center space-x-3">
+                  <span>View Menu</span>
+                  <Eye className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+                </span>
+              </button>
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-24 bg-gradient-to-r from-white/60 via-purple-50/60 to-pink-50/60 backdrop-blur-sm relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-100/20 via-pink-100/20 to-orange-100/20"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
+            <div className="text-center group">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl group-hover:scale-125 group-hover:rotate-6 transition-all duration-500 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-yellow-300/20 via-green-400/20 to-cyan-400/20 animate-pulse"></div>
+                <Star className="w-8 h-8 text-white" />
+              </div>
+              <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">4.9</div>
+              <div className="text-gray-700 font-semibold">Rating</div>
+            </div>
+            
+            <div className="text-center group">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl group-hover:scale-125 group-hover:rotate-6 transition-all duration-500 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-green-300/20 via-blue-400/20 to-purple-400/20 animate-pulse"></div>
+                <Clock className="w-8 h-8 text-white" />
+              </div>
+              <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">2min</div>
+              <div className="text-gray-700 font-semibold">Prep Time</div>
+            </div>
+            
+            <div className="text-center group">
+              <div className="w-20 h-20 bg-gradient-to-br from-green-500 via-cyan-500 to-blue-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl group-hover:scale-125 group-hover:rotate-6 transition-all duration-500 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-yellow-300/20 via-pink-400/20 to-purple-400/20 animate-pulse"></div>
+                <Award className="w-8 h-8 text-white" />
+              </div>
+              <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-cyan-600 bg-clip-text text-transparent mb-3">24</div>
+              <div className="text-gray-700 font-semibold">Flavors</div>
+            </div>
+            
+            <div className="text-center group">
+              <div className="w-20 h-20 bg-gradient-to-br from-pink-500 via-orange-500 to-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl group-hover:scale-125 group-hover:rotate-6 transition-all duration-500 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-cyan-300/20 via-blue-400/20 to-purple-400/20 animate-pulse"></div>
+                <Users className="w-8 h-8 text-white" />
+              </div>
+              <div className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent mb-3">50k+</div>
+              <div className="text-gray-700 font-semibold">Happy Customers</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Menu Section */}
+      <section id="menu" className="py-32 bg-gradient-to-br from-white via-purple-50/40 to-pink-50/40 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/30 via-purple-50/30 to-pink-50/30"></div>
+        <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-br from-purple-300/20 to-pink-300/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 right-10 w-40 h-40 bg-gradient-to-br from-blue-300/20 to-cyan-300/20 rounded-full blur-3xl"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-6xl md:text-7xl font-bold mb-8">
+              <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
+                Our Menu
+              </span>
+            </h2>
+            <p className="text-2xl bg-gradient-to-r from-gray-700 to-purple-600 bg-clip-text text-transparent max-w-3xl mx-auto font-medium">
+              Discover our carefully curated selection of premium bubble teas, 
+              each crafted with the finest ingredients and attention to detail.
+            </p>
+          </div>
+
+          {/* Category Filter */}
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
+            {categories.map((category) => {
+              const IconComponent = category.icon;
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`flex items-center space-x-2 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 ${
+                    selectedCategory === category.id
+                      ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white shadow-2xl'
+                      : 'bg-gradient-to-r from-white/90 to-purple-50/90 backdrop-blur-sm text-gray-700 hover:bg-white border-2 border-purple-200/50 hover:border-purple-300/70'
+                  }`}
+                >
+                  <IconComponent className="w-5 h-5" />
+                  <span>{category.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Drinks Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
+            {filteredDrinks.map((drink, index) => (
+              <div key={index} className="group bg-gradient-to-br from-white/90 via-purple-50/50 to-pink-50/50 backdrop-blur-sm rounded-3xl p-8 shadow-xl hover:shadow-3xl transition-all duration-700 hover:scale-110 hover:-translate-y-4 border-2 border-purple-200/30 hover:border-purple-300/60 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-100/20 via-pink-100/20 to-orange-100/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                {drink.popular && (
+                  <div className="flex justify-end mb-2">
+                    <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white text-xs px-4 py-2 rounded-full font-bold shadow-xl flex items-center space-x-1 animate-pulse">
+                      <Star className="w-3 h-3" />
+                      <span>Popular</span>
+                    </span>
+                  </div>
+                )}
+                
+                <div className="w-28 h-36 mx-auto mb-8 group-hover:scale-125 group-hover:rotate-3 transition-transform duration-500">
+                  {generateDrinkImage(drink.name)}
+                </div>
+                
+                <h3 className="text-xl font-bold text-gray-800 mb-3 text-center group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300">
+                  {drink.name}
+                </h3>
+                
+                <div className="flex items-center justify-between mb-6">
+                  <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
+                    ${drink.price.toFixed(2)}
+                  </span>
+                  <div className="flex items-center space-x-1 text-yellow-400">
+                    <Star className="w-4 h-4 fill-current" />
+                    <span className="text-sm font-semibold text-gray-700">4.8</span>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => handleAddToCart(drink)}
+                  className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-110 flex items-center justify-center space-x-2 relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-purple-600/30 to-pink-600/30 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+                  <Plus className="w-5 h-5" />
+                  <span>Customize & Add</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Customization Modal */}
+      {selectedDrink && selectedDrinkData && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Customize {selectedDrink}
+              </h2>
+              <button 
+                onClick={() => setSelectedDrink(null)}
+                className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Toppings */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Toppings</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {toppings.map((topping) => (
+                    <button
+                      key={topping.id}
+                      onClick={() => toggleTopping(topping)}
+                      className={`p-3 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        customizations.toppings.find(t => t.id === topping.id)
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-600'
+                          : 'bg-white border-gray-200 hover:border-purple-300 text-gray-700'
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{topping.name}</div>
+                      <div className="text-xs opacity-80">+${topping.price.toFixed(2)}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Milk Options */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Milk Options</h3>
+                <div className="space-y-2">
+                  {milkOptions.map((milk) => (
+                    <button
+                      key={milk.id}
+                      onClick={() => setMilkOption(milk)}
+                      className={`w-full p-3 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        customizations.milkOption?.id === milk.id
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-600'
+                          : 'bg-white border-gray-200 hover:border-purple-300 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">{milk.name}</span>
+                        {milk.price > 0 && (
+                          <span className="text-sm opacity-80">+${milk.price.toFixed(2)}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Sweetness Levels */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Sweetness Level</h3>
+                <div className="space-y-2">
+                  {sweetnessLevels.map((sweetness) => (
+                    <button
+                      key={sweetness.id}
+                      onClick={() => setSweetnessLevel(sweetness)}
+                      className={`w-full p-3 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        customizations.sweetnessLevel?.id === sweetness.id
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-600'
+                          : 'bg-white border-gray-200 hover:border-purple-300 text-gray-700'
+                      }`}
+                    >
+                      <span className="font-semibold">{sweetness.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-xl font-bold text-gray-800">Total:</span>
+                <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  ${calculateCustomizationPrice().toFixed(2)}
+                </span>
+              </div>
+              
+              <button
+                onClick={handleAddCustomizedDrinkToCart}
+                disabled={!customizations.milkOption || !customizations.sweetnessLevel}
+                className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cart Modal */}
+      {showCart && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center space-x-2">
+                <ShoppingCart className="w-8 h-8" />
+                <span>Your Cart</span>
+              </h2>
+              <button 
+                onClick={() => setShowCart(false)}
+                className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            {cartItems.length === 0 ? (
+              <div className="text-center py-12">
+                <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">Your cart is empty</p>
+                <p className="text-gray-400">Add some delicious drinks to get started!</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4 mb-8">
+                  {cartItems.map((item, index) => (
+                    <div key={index} className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="font-bold text-gray-800 text-lg">{item.drink.name}</h3>
+                        <button
+                          onClick={() => removeFromCart(index)}
+                          className="p-1 hover:bg-red-100 rounded-lg transition-colors text-red-500"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      
+                      <div className="text-sm text-gray-600 mb-3">
+                        <p>Milk: {item.milkOption.name}</p>
+                        <p>Sweetness: {item.sweetnessLevel.name}</p>
+                        {item.toppings.length > 0 && (
+                          <p>Toppings: {item.toppings.map(t => t.name).join(', ')}</p>
+                        )}
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => updateQuantity(index, item.quantity - 1)}
+                            className="p-1 hover:bg-purple-100 rounded-lg transition-colors"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="font-semibold text-lg">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(index, item.quantity + 1)}
+                            className="p-1 hover:bg-purple-100 rounded-lg transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                        
+                        <div className="text-right">
+                          <div className="text-sm text-gray-500">${item.totalPrice.toFixed(2)} each</div>
+                          <div className="font-bold text-lg bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                            ${(item.totalPrice * item.quantity).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <span className="text-2xl font-bold text-gray-800">Total:</span>
+                    <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
+                      ${getTotalPrice().toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  <button
+                    onClick={() => setShowCheckout(true)}
+                    className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105"
+                  >
+                    Proceed to Checkout ({getTotalItems()} items)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Checkout Modal */}
+      {showCheckout && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Checkout
+              </h2>
+              <button 
+                onClick={() => setShowCheckout(false)}
+                className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={customerInfo.name}
+                  onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Your name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={customerInfo.email}
+                  onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="your@email.com"
+                />
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 mb-6">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-800">Total Amount:</span>
+                <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  ${getTotalPrice().toFixed(2)}
+                </span>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleCheckout}
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <LoadingSpinner size="sm" className="text-white" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <span>Place Order</span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Image Gallery Modal */}
+      {showImages && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Drink Gallery
+              </h2>
+              <button 
+                onClick={() => setShowImages(false)}
+                className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {drinks.map((drink, index) => (
+                <div key={index} className="text-center group">
+                  <div className="w-full h-48 mb-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-4 group-hover:scale-105 transition-transform duration-300 shadow-lg">
+                    {generateDrinkImage(drink.name)}
+                  </div>
+                  <h3 className="font-semibold text-gray-800 mb-1">{drink.name}</h3>
+                  <p className="text-purple-600 font-bold">${drink.price.toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

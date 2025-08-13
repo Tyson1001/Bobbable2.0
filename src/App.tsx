@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Menu, X, ShoppingCart, Sparkles, Plus, Eye, Star, Clock, Award, Users, Heart, Minus, Trash2 } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoadingScreen, LoadingSpinner } from './components/LoadingSpinner';
+import { QRCode } from './components/QRCode';
 import { useMenu } from './hooks/useMenu';
 import { useCart } from './hooks/useCart';
 import type { Drink, Topping, MilkOption, SweetnessLevel } from './lib/supabase';
@@ -28,6 +29,7 @@ export default function App() {
   const [showCart, setShowCart] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({ name: '', email: '' });
   const [showCheckout, setShowCheckout] = useState(false);
+  const [orderConfirmation, setOrderConfirmation] = useState<{ orderId: string; total: number } | null>(null);
 
   // Update filtered drinks when category or drinks change
   React.useEffect(() => {
@@ -128,9 +130,8 @@ export default function App() {
   const handleCheckout = async () => {
     try {
       const order = await submitOrder(customerInfo.name || customerInfo.email ? customerInfo : undefined);
-      alert(`Order placed successfully! Order ID: ${order.id}`);
+      setOrderConfirmation({ orderId: order.id, total: getTotalPrice() });
       setShowCheckout(false);
-      setShowCart(false);
       setCustomerInfo({ name: '', email: '' });
     } catch (error) {
       console.error('Checkout error:', error);
@@ -809,6 +810,65 @@ export default function App() {
                 <span>Place Order</span>
               )}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Order Confirmation Modal */}
+      {orderConfirmation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-4">
+              Order Confirmed!
+            </h2>
+            
+            <p className="text-gray-600 mb-6">
+              Your delicious bubble tea order has been placed successfully.
+            </p>
+            
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold text-gray-700">Order ID:</span>
+                <span className="font-mono text-sm bg-white px-3 py-1 rounded-lg border">
+                  {orderConfirmation.orderId.slice(-8).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-700">Total:</span>
+                <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  ${orderConfirmation.total.toFixed(2)}
+                </span>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <QRCode 
+                value={`Order ID: ${orderConfirmation.orderId} - Total: $${orderConfirmation.total.toFixed(2)} - Bobabble Bubble Tea`}
+                size={150}
+              />
+            </div>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setOrderConfirmation(null);
+                  setShowCart(false);
+                }}
+                className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-3 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              >
+                Continue Shopping
+              </button>
+              
+              <p className="text-sm text-gray-500">
+                Estimated preparation time: 2-3 minutes
+              </p>
+            </div>
           </div>
         </div>
       )}

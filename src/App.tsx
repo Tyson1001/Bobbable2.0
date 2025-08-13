@@ -4,6 +4,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoadingScreen, LoadingSpinner } from './components/LoadingSpinner';
 import { useMenu } from './hooks/useMenu';
 import { useCart } from './hooks/useCart';
+import { OrderConfirmation } from './components/OrderConfirmation';
 import type { Drink, Topping, MilkOption, SweetnessLevel } from './lib/supabase';
 
 import { isSupabaseConfigured } from './lib/supabase';
@@ -28,6 +29,9 @@ export default function App() {
   const [showCart, setShowCart] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({ name: '', email: '' });
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<any>(null);
+  const [completedOrderItems, setCompletedOrderItems] = useState<any[]>([]);
 
   // Update filtered drinks when category or drinks change
   React.useEffect(() => {
@@ -127,10 +131,19 @@ export default function App() {
 
   const handleCheckout = async () => {
     try {
+      // Store current cart items before clearing
+      const currentCartItems = [...cartItems];
+      
       const order = await submitOrder(customerInfo.name || customerInfo.email ? customerInfo : undefined);
-      alert(`Order placed successfully! Order ID: ${order.id}`);
+      
+      // Set completed order data for confirmation screen
+      setCompletedOrder(order);
+      setCompletedOrderItems(currentCartItems);
+      
+      // Show order confirmation instead of alert
       setShowCheckout(false);
       setShowCart(false);
+      setShowOrderConfirmation(true);
       setCustomerInfo({ name: '', email: '' });
     } catch (error) {
       console.error('Checkout error:', error);
@@ -811,6 +824,19 @@ export default function App() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Order Confirmation Modal with QR Code */}
+      {showOrderConfirmation && completedOrder && (
+        <OrderConfirmation
+          order={completedOrder}
+          orderItems={completedOrderItems}
+          onClose={() => {
+            setShowOrderConfirmation(false);
+            setCompletedOrder(null);
+            setCompletedOrderItems([]);
+          }}
+        />
       )}
 
       {/* Image Gallery Modal */}

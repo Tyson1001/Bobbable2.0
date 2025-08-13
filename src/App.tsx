@@ -4,8 +4,6 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoadingScreen, LoadingSpinner } from './components/LoadingSpinner';
 import { useMenu } from './hooks/useMenu';
 import { useCart } from './hooks/useCart';
-import { QRCodeDisplay } from './components/QRCodeDisplay';
-import { QRCodeService, type OrderQRData } from './services/qrCodeService';
 import type { Drink, Topping, MilkOption, SweetnessLevel } from './lib/supabase';
 
 import { isSupabaseConfigured } from './lib/supabase';
@@ -30,9 +28,6 @@ export default function App() {
   const [showCart, setShowCart] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({ name: '', email: '' });
   const [showCheckout, setShowCheckout] = useState(false);
-  const [showQRCode, setShowQRCode] = useState(false);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
-  const [completedOrderId, setCompletedOrderId] = useState<string>('');
 
   // Update filtered drinks when category or drinks change
   React.useEffect(() => {
@@ -133,32 +128,7 @@ export default function App() {
   const handleCheckout = async () => {
     try {
       const order = await submitOrder(customerInfo.name || customerInfo.email ? customerInfo : undefined);
-      
-      // Generate QR code data
-      const qrData: OrderQRData = {
-        orderId: order.id,
-        customerName: customerInfo.name,
-        customerEmail: customerInfo.email,
-        totalAmount: getTotalPrice(),
-        timestamp: new Date().toISOString(),
-        items: cartItems.map(item => ({
-          drinkName: item.drink.name,
-          quantity: item.quantity,
-          customizations: {
-            milkOption: item.milkOption.name,
-            sweetnessLevel: item.sweetnessLevel.name,
-            toppings: item.toppings.map(t => t.name)
-          }
-        }))
-      };
-
-      // Generate QR code
-      const qrCodeUrl = await QRCodeService.generateOrderQRCode(qrData);
-      
-      // Show QR code modal
-      setQrCodeDataUrl(qrCodeUrl);
-      setCompletedOrderId(order.id);
-      setShowQRCode(true);
+      alert(`Order placed successfully! Order ID: ${order.id}`);
       setShowCheckout(false);
       setShowCart(false);
       setCustomerInfo({ name: '', email: '' });
@@ -197,7 +167,7 @@ export default function App() {
       return (
         <svg viewBox="0 0 120 160" className="w-full h-full">
           <defs>
-            <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1=\"0%\" x2=\"0%\" y2=\"100%">
+            <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
               <stop offset="0%" stopColor="#E6D7FF" />
               <stop offset="30%" stopColor="#D4B5FF" />
               <stop offset="70%" stopColor="#B794F6" />
@@ -258,7 +228,7 @@ export default function App() {
     return (
       <svg viewBox="0 0 120 160" className="w-full h-full">
         <defs>
-          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1=\"0%\" x2=\"0%\" y2=\"100%">
+          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
             <stop offset="0%" stopColor={color} stopOpacity="0.8" />
             <stop offset="100%" stopColor={color} stopOpacity="1" />
           </linearGradient>
@@ -872,19 +842,6 @@ export default function App() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* QR Code Display Modal */}
-      {showQRCode && qrCodeDataUrl && (
-        <QRCodeDisplay
-          qrCodeDataUrl={qrCodeDataUrl}
-          orderId={completedOrderId}
-          onClose={() => {
-            setShowQRCode(false);
-            setQrCodeDataUrl('');
-            setCompletedOrderId('');
-          }}
-        />
       )}
       </div>
     </ErrorBoundary>

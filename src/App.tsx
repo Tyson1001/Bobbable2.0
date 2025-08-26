@@ -167,7 +167,7 @@ export default function App() {
       return (
         <svg viewBox="0 0 120 160" className="w-full h-full">
           <defs>
-            <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1=\"0%\" x2=\"0%\" y2=\"100%">
+            <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
               <stop offset="0%" stopColor="#E6D7FF" />
               <stop offset="30%" stopColor="#D4B5FF" />
               <stop offset="70%" stopColor="#B794F6" />
@@ -228,7 +228,7 @@ export default function App() {
     return (
       <svg viewBox="0 0 120 160" className="w-full h-full">
         <defs>
-          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1=\"0%\" x2=\"0%\" y2=\"100%">
+          <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
             <stop offset="0%" stopColor={color} stopOpacity="0.8" />
             <stop offset="100%" stopColor={color} stopOpacity="1" />
           </linearGradient>
@@ -543,129 +543,6 @@ export default function App() {
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section id="contact" className="py-32 bg-gradient-to-br from-purple-50 via-white to-pink-50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/30 via-purple-50/30 to-pink-50/30"></div>
-        <div className="absolute top-20 right-20 w-40 h-40 bg-gradient-to-br from-purple-300/20 to-pink-300/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-20 w-32 h-32 bg-gradient-to-br from-blue-300/20 to-cyan-300/20 rounded-full blur-3xl"></div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-6xl md:text-7xl font-bold mb-8">
-              <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
-                Get in Touch
-              </span>
-            </h2>
-            <p className="text-2xl bg-gradient-to-r from-gray-700 to-purple-600 bg-clip-text text-transparent max-w-3xl mx-auto font-medium">
-              Have questions about our bubble tea or need support? We'd love to hear from you!
-            </p>
-          </div>
-
-          <div className="max-w-4xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              {/* Contact Info */}
-              <div className="bg-gradient-to-br from-white/90 via-purple-50/50 to-pink-50/50 backdrop-blur-sm rounded-3xl p-8 shadow-xl border-2 border-purple-200/30 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-100/20 via-pink-100/20 to-orange-100/20"></div>
-                <div className="relative">
-                  <h3 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-8">
-                    Contact Information
-                  </h3>
-                  
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                        <Heart className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-800 text-lg">Email Us</h4>
-                        <a 
-                          href="mailto:sontyler02@gmail.com" 
-                          className="text-purple-600 hover:text-pink-600 transition-colors font-medium text-lg"
-                        >
-                          sontyler02@gmail.com
-                        </a>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
-                        <Clock className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-800 text-lg">Response Time</h4>
-                        <p className="text-gray-600 font-medium">Usually within 24 hours</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg">
-                        <Users className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-800 text-lg">Support</h4>
-                        <p className="text-gray-600 font-medium">Customer service & technical help</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Form */}
-              <div className="bg-gradient-to-br from-white/90 via-purple-50/50 to-pink-50/50 backdrop-blur-sm rounded-3xl p-8 shadow-xl border-2 border-purple-200/30 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-100/20 via-pink-100/20 to-orange-100/20"></div>
-                <div className="relative">
-                  <h3 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-8">
-                    Send us a Message
-                  </h3>
-                  
-                  <form className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Your Name
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full p-4 border-2 border-purple-200/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/80 backdrop-blur-sm transition-all duration-300"
-                        placeholder="Enter your name"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        className="w-full p-4 border-2 border-purple-200/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/80 backdrop-blur-sm transition-all duration-300"
-                        placeholder="your@email.com"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Message
-                      </label>
-                      <textarea
-                        rows={4}
-                        className="w-full p-4 border-2 border-purple-200/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/80 backdrop-blur-sm transition-all duration-300 resize-none"
-                        placeholder="Tell us how we can help you..."
-                      ></textarea>
-                    </div>
-                    
-                    <button
-                      type="submit"
-                      className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 relative overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-purple-600/30 to-pink-600/30 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                      <span className="relative">Send Message</span>
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
       {/* Customization Modal */}
       {selectedDrink && selectedDrinkData && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">

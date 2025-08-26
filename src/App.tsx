@@ -167,14 +167,14 @@ export default function App() {
       return (
         <svg viewBox="0 0 120 160" className="w-full h-full">
           <defs>
-            <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1="0%\" x2="0%\" y2="100%">
+            <linearGradient id={`gradient-${name.replace(/\s+/g, '')}`} x1="0%\" y1=\"0%\" x2=\"0%\" y2=\"100%">
               <stop offset="0%" stopColor="#E6D7FF" />
               <stop offset="30%" stopColor="#D4B5FF" />
               <stop offset="70%" stopColor="#B794F6" />
               <stop offset="100%" stopColor="#9F7AEA" />
             </linearGradient>
             <linearGradient id="cupGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <path fill={`url(#gradient-${name.replace(/\s+/g, '')})`} d="M20 20 Q20 10 30 10 L90 10 Q100 10 100 20 L100 140 Q100 150 90 150 L30 150 Q20 150 20 140 Z" />
+              <stop offset="0%" stopColor="#F7FAFC" stopOpacity="0.9" />
               <stop offset="50%" stopColor="#EDF2F7" stopOpacity="0.7" />
               <stop offset="100%" stopColor="#E2E8F0" stopOpacity="0.9" />
             </linearGradient>

@@ -371,13 +371,6 @@ export default function App() {
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center max-w-4xl mx-auto">
-            <div className="flex justify-center mb-8">
-              <div className="flex items-center space-x-2 bg-gradient-to-r from-white/90 to-purple-50/90 backdrop-blur-sm px-8 py-4 rounded-full shadow-xl border-2 border-purple-200/50 hover:scale-105 transition-all duration-300">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-bold">Premium Quality Guaranteed</span>
-              </div>
-            </div>
-            
             <h1 className="text-7xl md:text-8xl font-bold mb-10 leading-tight">
               <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent animate-pulse">
                 Bubble Tea

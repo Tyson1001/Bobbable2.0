@@ -18,13 +18,15 @@ export class MenuService {
 
       if (error) {
         console.error('Error fetching drinks:', error);
-        throw new Error('Failed to fetch drinks');
+        console.warn('Falling back to mock data due to Supabase error');
+        return mockDrinks;
       }
 
       return data || [];
     } catch (error) {
       console.error('MenuService.getDrinks error:', error);
-      throw error;
+      console.warn('Falling back to mock data due to error');
+      return mockDrinks;
     }
   }
 
@@ -50,13 +52,21 @@ export class MenuService {
 
       if (error) {
         console.error('Error fetching drinks by category:', error);
-        throw new Error('Failed to fetch drinks by category');
+        console.warn('Falling back to mock data due to Supabase error');
+        if (category === 'all') {
+          return mockDrinks;
+        }
+        return mockDrinks.filter(drink => drink.category === category);
       }
 
       return data || [];
     } catch (error) {
       console.error('MenuService.getDrinksByCategory error:', error);
-      throw error;
+      console.warn('Falling back to mock data due to error');
+      if (category === 'all') {
+        return mockDrinks;
+      }
+      return mockDrinks.filter(drink => drink.category === category);
     }
   }
 
@@ -75,13 +85,15 @@ export class MenuService {
 
       if (error) {
         console.error('Error fetching toppings:', error);
-        throw new Error('Failed to fetch toppings');
+        console.warn('Falling back to mock data due to Supabase error');
+        return mockToppings;
       }
 
       return data || [];
     } catch (error) {
       console.error('MenuService.getToppings error:', error);
-      throw error;
+      console.warn('Falling back to mock data due to error');
+      return mockToppings;
     }
   }
 
@@ -100,13 +112,15 @@ export class MenuService {
 
       if (error) {
         console.error('Error fetching milk options:', error);
-        throw new Error('Failed to fetch milk options');
+        console.warn('Falling back to mock data due to Supabase error');
+        return mockMilkOptions;
       }
 
       return data || [];
     } catch (error) {
       console.error('MenuService.getMilkOptions error:', error);
-      throw error;
+      console.warn('Falling back to mock data due to error');
+      return mockMilkOptions;
     }
   }
 
@@ -124,13 +138,15 @@ export class MenuService {
 
       if (error) {
         console.error('Error fetching sweetness levels:', error);
-        throw new Error('Failed to fetch sweetness levels');
+        console.warn('Falling back to mock data due to Supabase error');
+        return mockSweetnessLevels;
       }
 
       return data || [];
     } catch (error) {
       console.error('MenuService.getSweetnessLevels error:', error);
-      throw error;
+      console.warn('Falling back to mock data due to error');
+      return mockSweetnessLevels;
     }
   }
 
@@ -149,13 +165,15 @@ export class MenuService {
 
       if (error) {
         console.error('Error fetching popular drinks:', error);
-        throw new Error('Failed to fetch popular drinks');
+        console.warn('Falling back to mock data due to Supabase error');
+        return mockDrinks.filter(drink => drink.popular);
       }
 
       return data || [];
     } catch (error) {
       console.error('MenuService.getPopularDrinks error:', error);
-      throw error;
+      console.warn('Falling back to mock data due to error');
+      return mockDrinks.filter(drink => drink.popular);
     }
   }
 }
